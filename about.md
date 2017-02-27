@@ -4,12 +4,13 @@ title: About
 permalink: /about/
 ---
 
-Some information about you!
+Data Scientist and PhD Candidate @ Politecnico di Torino. 
 
 ### More Information
 
-A place to include any other types of information that you'd like to include about yourself.
+
+This space is meant for sharing my last real data analyses with whoever can be interested (collegues, curiosity-driven students, RECRUITERS!) 
 
 ### Contact me
 
-[email@domain.com](mailto:email@domain.com)
+[fabio.pulvirenti88@gmail.com](mailto:fabio.pulvirenti88@gmail.com)
