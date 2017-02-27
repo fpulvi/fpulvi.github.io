@@ -8,4 +8,4 @@ categories: use-case
 Now available a brief and clear presentation based on the data analysis and the take-aways: [download][1]
 
 [1]:https://github.com/fpulvi/fpulvi.github.io/blob/master/_assets/Pulvirenti_QuizGame_Anonymized.pdf
-[get the PDF]({{ site.url }}/assets/Pulvirenti_QuizGame_Anonymized.pdf)
+[get the PDF]({{ site.url }}/_assets/Pulvirenti_QuizGame_Anonymized.pdf)
