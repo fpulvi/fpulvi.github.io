@@ -1,3951 +1,80 @@
 ---
 layout: post
-title:  "Fantasy Football"
-date:   2017-03-07 13:51:05 +0100
+title:  "Quiz game data analysis"
+date:   2017-02-27 13:51:05 +0100
 categories: use-case
 ---
 
-In this project, we will try to predict the performances of the players of Italian football championship Serie A.
-The project is meant in the context of Fantasy Football, a popular player in which a group of friends organize a virtual
-team of real seria A players. The aim of the game is reach the highest score, given the score the sum of the performance evaluation marks
-of the players of your team. 
-Predicting the mark of your players could definitely be an advantage for a fantasy football coach.
+In this first data analysis, I will have fun analyzing the data from a quiz game. However, we will have access just to collection of the user feedbacks related to the questions. 
 
-In this first notebook, we will create the dataset and do a lot of feature engineering.
+Each record of the dataset represents a set of data for a single couple «question-answer» 
+- Information related to the question
+- Information related to the answer and the feedback provided by the user during a game
+
+Specifically, each record is characterized by the following features:
+- Question ID : question identifier
+- Category ID: category of the question
+- Game ID: single game / match identifier
+- Question Type: text / image question
+- Answer : Correct / Wrong / Other
+- Vote : feedback on the questions (thumb up / down)
+
 
 
 ```python
-#import
-from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
-
-```
-
-Let try to extract data from the sqlite dataset
-
-
-```python
-engine = create_engine('sqlite:///2014')
-# Open engine connection: con
-con = engine.connect()
-table_names = engine.table_names()
-print(table_names)
-```
-
-    [u'games', u'marks_corriere', u'marks_fantagazzetta', u'marks_gazzetta', u'players', u'sqlite_sequence']
-    
-
-let's focus for the moment on the results of just one sport newspaper such as Gazzetta
-
-
-```python
-with engine.connect() as con:
-    rs = con.execute('SELECT * from games')
-    # Save results of the query to DataFrame: df
-    games = pd.DataFrame(rs.fetchall())
-    games.columns = rs.keys()
-    
-    rs = con.execute('SELECT * from marks_gazzetta')
-    marks = pd.DataFrame(rs.fetchall())
-    marks.columns = rs.keys()
-    
-    rs = con.execute('SELECT * from players')
-    players = pd.DataFrame(rs.fetchall())
-    players.columns = rs.keys()
+import matplotlib.pyplot as plt
+from sklearn import preprocessing
 ```
 
 
 ```python
-players.head()
+votes = pd.read_csv('votes.csv') #to hide
+categ = pd.read_csv('categories.csv',sep=';') #to hide!
+votes = pd.merge(left = votes, right = categ, on= 'question_id')
+votes.dropna(how='any', inplace=True)
 ```
 
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id</th>
-      <th>name</th>
-      <th>team</th>
-      <th>role</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>P</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2248</td>
-      <td>Benalouane</td>
-      <td>Atalanta</td>
-      <td>D</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2249</td>
-      <td>Biava</td>
-      <td>Atalanta</td>
-      <td>D</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2250</td>
-      <td>Drame'</td>
-      <td>Atalanta</td>
-      <td>D</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>2251</td>
-      <td>Zappacosta</td>
-      <td>Atalanta</td>
-      <td>D</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
+Loading and cleaning. I know, dropping all these values can be aggressive. Maybe even here there is something interesting.
+Transform some of the data to facilitate some aggregated statistics.
 
 
 ```python
-marks.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id</th>
-      <th>day</th>
-      <th>player</th>
-      <th>team</th>
-      <th>mark</th>
-      <th>goal</th>
-      <th>gotgoal</th>
-      <th>penalty</th>
-      <th>spenalty</th>
-      <th>mpenalty</th>
-      <th>owngoal</th>
-      <th>assist</th>
-      <th>ycard</th>
-      <th>rcard</th>
-      <th>fmark</th>
-      <th>enter</th>
-      <th>exit</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>21175</td>
-      <td>1</td>
-      <td>2247</td>
-      <td>Atalanta</td>
-      <td>7.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>21176</td>
-      <td>1</td>
-      <td>2248</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>21177</td>
-      <td>1</td>
-      <td>2249</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>21178</td>
-      <td>1</td>
-      <td>2250</td>
-      <td>Atalanta</td>
-      <td>5.5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>21179</td>
-      <td>1</td>
-      <td>2251</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-Let's join this dataset in order to obtain the player names together with the id (it won't affect the results of course, but it will be easier to check the process
-
-
-```python
-marks_merged = pd.merge(marks,players, how = 'inner', left_on='player', right_on='id')
-marks_merged.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id_x</th>
-      <th>day</th>
-      <th>player</th>
-      <th>team_x</th>
-      <th>mark</th>
-      <th>goal</th>
-      <th>gotgoal</th>
-      <th>penalty</th>
-      <th>spenalty</th>
-      <th>mpenalty</th>
-      <th>...</th>
-      <th>assist</th>
-      <th>ycard</th>
-      <th>rcard</th>
-      <th>fmark</th>
-      <th>enter</th>
-      <th>exit</th>
-      <th>id_y</th>
-      <th>name</th>
-      <th>team_y</th>
-      <th>role</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>21175</td>
-      <td>1</td>
-      <td>2247</td>
-      <td>Atalanta</td>
-      <td>7.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>P</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>21453</td>
-      <td>2</td>
-      <td>2247</td>
-      <td>Atalanta</td>
-      <td>7.5</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>P</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>21733</td>
-      <td>3</td>
-      <td>2247</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>P</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>22012</td>
-      <td>4</td>
-      <td>2247</td>
-      <td>Atalanta</td>
-      <td>6.5</td>
-      <td>0</td>
-      <td>2</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>P</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>22291</td>
-      <td>5</td>
-      <td>2247</td>
-      <td>Atalanta</td>
-      <td>5.0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>P</td>
-    </tr>
-  </tbody>
-</table>
-<p>5 rows × 21 columns</p>
-</div>
-
-
-
-
-```python
-marks_merged.sort_values(['day', 'team_x','name']).head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id_x</th>
-      <th>day</th>
-      <th>player</th>
-      <th>team_x</th>
-      <th>mark</th>
-      <th>goal</th>
-      <th>gotgoal</th>
-      <th>penalty</th>
-      <th>spenalty</th>
-      <th>mpenalty</th>
-      <th>...</th>
-      <th>assist</th>
-      <th>ycard</th>
-      <th>rcard</th>
-      <th>fmark</th>
-      <th>enter</th>
-      <th>exit</th>
-      <th>id_y</th>
-      <th>name</th>
-      <th>team_y</th>
-      <th>role</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>37</th>
-      <td>21176</td>
-      <td>1</td>
-      <td>2248</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2248</td>
-      <td>Benalouane</td>
-      <td>Atalanta</td>
-      <td>D</td>
-    </tr>
-    <tr>
-      <th>281</th>
-      <td>21186</td>
-      <td>1</td>
-      <td>2258</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>2258</td>
-      <td>Bianchi</td>
-      <td>Atalanta</td>
-      <td>A</td>
-    </tr>
-    <tr>
-      <th>64</th>
-      <td>21177</td>
-      <td>1</td>
-      <td>2249</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2249</td>
-      <td>Biava</td>
-      <td>Atalanta</td>
-      <td>D</td>
-    </tr>
-    <tr>
-      <th>302</th>
-      <td>21187</td>
-      <td>1</td>
-      <td>2259</td>
-      <td>Atalanta</td>
-      <td>5.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>4.5</td>
-      <td>1</td>
-      <td>0</td>
-      <td>2259</td>
-      <td>Boakye</td>
-      <td>Atalanta</td>
-      <td>A</td>
-    </tr>
-    <tr>
-      <th>140</th>
-      <td>21180</td>
-      <td>1</td>
-      <td>2252</td>
-      <td>Atalanta</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2252</td>
-      <td>Bonaventura</td>
-      <td>Milan</td>
-      <td>C</td>
-    </tr>
-  </tbody>
-</table>
-<p>5 rows × 21 columns</p>
-</div>
-
-
-
-For the moment let's use just a subset of the features, we will have time to get them back.
-
-
-```python
-marks_final = marks_merged[['player','name','team_x','day','goal','penalty','owngoal','mark']]
-```
-
-Don't really like that "team_x"
-
-
-```python
-marks_final=marks_final.rename(columns = {'team_x':'team'})
-```
-
-let us focus on the games.
-
-
-```python
-games.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>day</th>
-      <th>home</th>
-      <th>away</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>1</td>
-      <td>Chievo</td>
-      <td>Juventus</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>Atalanta</td>
-      <td>Verona</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>1</td>
-      <td>Torino</td>
-      <td>Inter</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>1</td>
-      <td>Sassuolo</td>
-      <td>Cagliari</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>1</td>
-      <td>Genoa</td>
-      <td>Napoli</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-as suspected, there are no results for the matches. We should obtain those from the player statistics. What will influence the results?
-- Of course, the Goals, so consider the feature gol of the dataset marks
-- What about the penalties? Let's consider them as well
-- Do not forget the unfortunate owngoals
-
-
-```python
-def whoWon (teamH,teamA,day):
-    """simple functions aimed to deliver the winner of each game"""
-    marksSpecificH = marks_final[(marks_final['day'] == day) & (marks_final['team'] == teamH)]
-    marksSpecificA = marks_final[(marks_final['day'] == day) & (marks_final['team'] == teamA)]
-    
-    #print(marksSpecificH)
-    goalH = marksSpecificH['goal'].sum() + marksSpecificH['penalty'].sum() + marksSpecificA['owngoal'].sum()
-
-    
-    #print(marksSpecificA)
-    goalA = marksSpecificA['goal'].sum() + marksSpecificA['penalty'].sum() + marksSpecificH['owngoal'].sum()
-    
-    winner = 0
-    if (goalH > goalA): winner = 1
-    if (goalH < goalA): winner = 2
-    if (goalH == goalA): winner = 0
-    return winner
-```
-
-
-```python
-games['winner'] = map(lambda teamH,teamA,day: whoWon(teamH,teamA,day), games['home'], games['away'], games['day'])
-games[games['day']==1]
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>day</th>
-      <th>home</th>
-      <th>away</th>
-      <th>winner</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>1</td>
-      <td>Chievo</td>
-      <td>Juventus</td>
-      <td>2</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>Atalanta</td>
-      <td>Verona</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>1</td>
-      <td>Torino</td>
-      <td>Inter</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>1</td>
-      <td>Sassuolo</td>
-      <td>Cagliari</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>1</td>
-      <td>Genoa</td>
-      <td>Napoli</td>
-      <td>2</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>1</td>
-      <td>Palermo</td>
-      <td>Sampdoria</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>1</td>
-      <td>Cesena</td>
-      <td>Parma</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>1</td>
-      <td>Roma</td>
-      <td>Fiorentina</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>1</td>
-      <td>Udinese</td>
-      <td>Empoli</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>1</td>
-      <td>Milan</td>
-      <td>Lazio</td>
-      <td>1</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-Very good! now we have the results. However, I am afraid that we need more feature engineering if we want other interesting informations.
-Indeed, the rank of the team is quite an important matter, for this we need to rebuild the rankings.
-
-
-```python
-days = np.arange(0,39,1)
-teams = games1['home']
-teams = teams.drop_duplicates()
-```
-
-
-```python
-points = pd.DataFrame(columns=np.arange(0,39,1))
-points['Team'] = teams
-points[0] = 0
-```
-
-
-```python
-cols = points.columns.tolist()
-cols = cols[-1:] + cols[:-1]
-points = points[cols]
-```
-
-
-```python
-points
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>Team</th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>...</th>
-      <th>29</th>
-      <th>30</th>
-      <th>31</th>
-      <th>32</th>
-      <th>33</th>
-      <th>34</th>
-      <th>35</th>
-      <th>36</th>
-      <th>37</th>
-      <th>38</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>Chievo</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>Atalanta</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>Torino</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>Sassuolo</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>Genoa</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>Palermo</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>Cesena</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>Roma</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>Udinese</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>Milan</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>Napoli</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>Empoli</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>Fiorentina</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>Cagliari</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>Juventus</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>Verona</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>Sampdoria</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>Lazio</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>Parma</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>Inter</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-    </tr>
-  </tbody>
-</table>
-<p>20 rows × 40 columns</p>
-</div>
-
-
-
-
-```python
-def updatePoints (teamH,teamA,day,winner):
-    if (winner == 1):
-        points.ix[points['Team'] == teamH, day] = 3
-        points.ix[points['Team'] == teamA, day] = 0
-    if (winner == 2):
-        points.ix[points['Team'] == teamA, day] = 3
-        points.ix[points['Team'] == teamH, day] = 0
-    if (winner == 0):
-        points.ix[points['Team'] == teamH, day] = 1
-        points.ix[points['Team'] == teamA, day] = 1
-```
-
-
-```python
-_ = map(lambda teamH,teamA,day,winner: updatePoints(teamH,teamA,day,winner), games['home'], games['away'], games['day'], games['winner'])
-```
-
-
-```python
-points
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>Team</th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>...</th>
-      <th>29</th>
-      <th>30</th>
-      <th>31</th>
-      <th>32</th>
-      <th>33</th>
-      <th>34</th>
-      <th>35</th>
-      <th>36</th>
-      <th>37</th>
-      <th>38</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>Chievo</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>Atalanta</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>Torino</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>Sassuolo</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>Genoa</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>Palermo</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>Cesena</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>Roma</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>Udinese</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>...</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>Milan</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>Napoli</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>Empoli</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>Fiorentina</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>...</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>Cagliari</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>Juventus</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>Verona</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>Sampdoria</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>Lazio</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>Parma</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>Inter</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-    </tr>
-  </tbody>
-</table>
-<p>20 rows × 40 columns</p>
-</div>
-
-
-
-
-```python
-#print(pointsTest)
-points['total'] = 0
-for i in range(39):
-    points['total'] = points['total'] + points[i]    
-points
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>Team</th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>...</th>
-      <th>30</th>
-      <th>31</th>
-      <th>32</th>
-      <th>33</th>
-      <th>34</th>
-      <th>35</th>
-      <th>36</th>
-      <th>37</th>
-      <th>38</th>
-      <th>total</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>Chievo</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>43</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>Atalanta</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>37</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>Torino</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>...</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>54</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>Sassuolo</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>49</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>Genoa</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>59</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>Palermo</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>...</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>49</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>Cesena</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>24</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>Roma</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>...</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>70</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>Udinese</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>41</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>Milan</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>...</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>52</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>Napoli</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>63</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>Empoli</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>42</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>Fiorentina</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>64</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>Cagliari</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>34</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>Juventus</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>87</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>Verona</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>46</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>Sampdoria</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>...</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>56</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>Lazio</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>3</td>
-      <td>69</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>Parma</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>26</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>Inter</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>...</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3</td>
-      <td>1</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>55</td>
-    </tr>
-  </tbody>
-</table>
-<p>20 rows × 41 columns</p>
-</div>
-
-
-
-Cool, now let's try to obtain the position in the rank for each day of the championship
-
-
-```python
-pointsDay = pd.DataFrame(columns=np.arange(0,39,1))
-pointsDay['Team'] = teams
-pointsDay[0] = 0
-
-for i in range(1,39):
-    pointsDay[i] = pointsDay[i-1] + points[i]
-pointsDay
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>9</th>
-      <th>...</th>
-      <th>30</th>
-      <th>31</th>
-      <th>32</th>
-      <th>33</th>
-      <th>34</th>
-      <th>35</th>
-      <th>36</th>
-      <th>37</th>
-      <th>38</th>
-      <th>Team</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>...</td>
-      <td>35</td>
-      <td>36</td>
-      <td>37</td>
-      <td>40</td>
-      <td>41</td>
-      <td>42</td>
-      <td>42</td>
-      <td>43</td>
-      <td>43</td>
-      <td>Chievo</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>0</td>
-      <td>1</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>7</td>
-      <td>7</td>
-      <td>8</td>
-      <td>...</td>
-      <td>29</td>
-      <td>30</td>
-      <td>31</td>
-      <td>32</td>
-      <td>33</td>
-      <td>36</td>
-      <td>36</td>
-      <td>37</td>
-      <td>37</td>
-      <td>Atalanta</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>4</td>
-      <td>5</td>
-      <td>5</td>
-      <td>8</td>
-      <td>8</td>
-      <td>11</td>
-      <td>...</td>
-      <td>43</td>
-      <td>44</td>
-      <td>47</td>
-      <td>48</td>
-      <td>48</td>
-      <td>48</td>
-      <td>51</td>
-      <td>51</td>
-      <td>54</td>
-      <td>Torino</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>2</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>4</td>
-      <td>7</td>
-      <td>10</td>
-      <td>...</td>
-      <td>35</td>
-      <td>36</td>
-      <td>36</td>
-      <td>36</td>
-      <td>37</td>
-      <td>40</td>
-      <td>43</td>
-      <td>46</td>
-      <td>49</td>
-      <td>Sassuolo</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>4</td>
-      <td>5</td>
-      <td>5</td>
-      <td>8</td>
-      <td>9</td>
-      <td>12</td>
-      <td>15</td>
-      <td>...</td>
-      <td>44</td>
-      <td>44</td>
-      <td>47</td>
-      <td>50</td>
-      <td>50</td>
-      <td>53</td>
-      <td>56</td>
-      <td>59</td>
-      <td>59</td>
-      <td>Genoa</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>2</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>6</td>
-      <td>6</td>
-      <td>9</td>
-      <td>...</td>
-      <td>38</td>
-      <td>41</td>
-      <td>41</td>
-      <td>42</td>
-      <td>43</td>
-      <td>43</td>
-      <td>46</td>
-      <td>46</td>
-      <td>49</td>
-      <td>Palermo</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>4</td>
-      <td>4</td>
-      <td>5</td>
-      <td>6</td>
-      <td>6</td>
-      <td>6</td>
-      <td>6</td>
-      <td>...</td>
-      <td>22</td>
-      <td>23</td>
-      <td>23</td>
-      <td>24</td>
-      <td>24</td>
-      <td>24</td>
-      <td>24</td>
-      <td>24</td>
-      <td>24</td>
-      <td>Cesena</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>0</td>
-      <td>3</td>
-      <td>6</td>
-      <td>9</td>
-      <td>12</td>
-      <td>15</td>
-      <td>15</td>
-      <td>18</td>
-      <td>19</td>
-      <td>22</td>
-      <td>...</td>
-      <td>57</td>
-      <td>58</td>
-      <td>58</td>
-      <td>61</td>
-      <td>64</td>
-      <td>64</td>
-      <td>67</td>
-      <td>70</td>
-      <td>70</td>
-      <td>Roma</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>6</td>
-      <td>9</td>
-      <td>12</td>
-      <td>13</td>
-      <td>13</td>
-      <td>16</td>
-      <td>16</td>
-      <td>...</td>
-      <td>34</td>
-      <td>35</td>
-      <td>38</td>
-      <td>38</td>
-      <td>41</td>
-      <td>41</td>
-      <td>41</td>
-      <td>41</td>
-      <td>41</td>
-      <td>Udinese</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>0</td>
-      <td>3</td>
-      <td>6</td>
-      <td>6</td>
-      <td>7</td>
-      <td>8</td>
-      <td>11</td>
-      <td>14</td>
-      <td>15</td>
-      <td>16</td>
-      <td>...</td>
-      <td>42</td>
-      <td>43</td>
-      <td>43</td>
-      <td>43</td>
-      <td>43</td>
-      <td>46</td>
-      <td>46</td>
-      <td>49</td>
-      <td>52</td>
-      <td>Milan</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>4</td>
-      <td>7</td>
-      <td>10</td>
-      <td>11</td>
-      <td>14</td>
-      <td>15</td>
-      <td>...</td>
-      <td>50</td>
-      <td>53</td>
-      <td>56</td>
-      <td>56</td>
-      <td>59</td>
-      <td>60</td>
-      <td>63</td>
-      <td>63</td>
-      <td>63</td>
-      <td>Napoli</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>2</td>
-      <td>3</td>
-      <td>6</td>
-      <td>7</td>
-      <td>7</td>
-      <td>7</td>
-      <td>...</td>
-      <td>33</td>
-      <td>34</td>
-      <td>35</td>
-      <td>38</td>
-      <td>41</td>
-      <td>41</td>
-      <td>41</td>
-      <td>42</td>
-      <td>42</td>
-      <td>Empoli</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>4</td>
-      <td>5</td>
-      <td>6</td>
-      <td>9</td>
-      <td>9</td>
-      <td>10</td>
-      <td>13</td>
-      <td>...</td>
-      <td>49</td>
-      <td>49</td>
-      <td>49</td>
-      <td>49</td>
-      <td>52</td>
-      <td>55</td>
-      <td>58</td>
-      <td>61</td>
-      <td>64</td>
-      <td>Fiorentina</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>4</td>
-      <td>4</td>
-      <td>5</td>
-      <td>8</td>
-      <td>9</td>
-      <td>...</td>
-      <td>21</td>
-      <td>21</td>
-      <td>24</td>
-      <td>24</td>
-      <td>27</td>
-      <td>28</td>
-      <td>28</td>
-      <td>31</td>
-      <td>34</td>
-      <td>Cagliari</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>0</td>
-      <td>3</td>
-      <td>6</td>
-      <td>9</td>
-      <td>12</td>
-      <td>15</td>
-      <td>18</td>
-      <td>19</td>
-      <td>22</td>
-      <td>22</td>
-      <td>...</td>
-      <td>70</td>
-      <td>73</td>
-      <td>73</td>
-      <td>76</td>
-      <td>79</td>
-      <td>80</td>
-      <td>83</td>
-      <td>86</td>
-      <td>87</td>
-      <td>Juventus</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>0</td>
-      <td>1</td>
-      <td>4</td>
-      <td>7</td>
-      <td>8</td>
-      <td>8</td>
-      <td>11</td>
-      <td>11</td>
-      <td>11</td>
-      <td>12</td>
-      <td>...</td>
-      <td>33</td>
-      <td>36</td>
-      <td>39</td>
-      <td>40</td>
-      <td>40</td>
-      <td>41</td>
-      <td>44</td>
-      <td>45</td>
-      <td>46</td>
-      <td>Verona</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>0</td>
-      <td>1</td>
-      <td>4</td>
-      <td>5</td>
-      <td>8</td>
-      <td>11</td>
-      <td>14</td>
-      <td>15</td>
-      <td>16</td>
-      <td>16</td>
-      <td>...</td>
-      <td>49</td>
-      <td>50</td>
-      <td>50</td>
-      <td>51</td>
-      <td>51</td>
-      <td>54</td>
-      <td>54</td>
-      <td>55</td>
-      <td>56</td>
-      <td>Sampdoria</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>6</td>
-      <td>9</td>
-      <td>12</td>
-      <td>15</td>
-      <td>16</td>
-      <td>...</td>
-      <td>58</td>
-      <td>58</td>
-      <td>59</td>
-      <td>62</td>
-      <td>63</td>
-      <td>63</td>
-      <td>66</td>
-      <td>66</td>
-      <td>69</td>
-      <td>Lazio</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>...</td>
-      <td>19</td>
-      <td>20</td>
-      <td>23</td>
-      <td>23</td>
-      <td>23</td>
-      <td>24</td>
-      <td>24</td>
-      <td>25</td>
-      <td>26</td>
-      <td>Parma</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>0</td>
-      <td>1</td>
-      <td>4</td>
-      <td>5</td>
-      <td>8</td>
-      <td>8</td>
-      <td>8</td>
-      <td>9</td>
-      <td>12</td>
-      <td>15</td>
-      <td>...</td>
-      <td>41</td>
-      <td>42</td>
-      <td>45</td>
-      <td>48</td>
-      <td>49</td>
-      <td>52</td>
-      <td>52</td>
-      <td>52</td>
-      <td>55</td>
-      <td>Inter</td>
-    </tr>
-  </tbody>
-</table>
-<p>20 rows × 40 columns</p>
-</div>
-
-
-
-
-```python
-rankDay = pd.DataFrame(columns=np.arange(0,39,1))
-rankDay['Team'] = teams
-```
-
-
-```python
-for i in range(0,39): 
-    rankDay[i] = pointsDay[i].rank(ascending=0)
-    rankDay[i] = map(lambda x: int(x), rankDay[i])
-rankDay.sort_values(by=38) 
-
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>9</th>
-      <th>...</th>
-      <th>30</th>
-      <th>31</th>
-      <th>32</th>
-      <th>33</th>
-      <th>34</th>
-      <th>35</th>
-      <th>36</th>
-      <th>37</th>
-      <th>38</th>
-      <th>Team</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>14</th>
-      <td>10</td>
-      <td>3</td>
-      <td>2</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>...</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>Juventus</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>10</td>
-      <td>3</td>
-      <td>2</td>
-      <td>1</td>
-      <td>1</td>
-      <td>1</td>
-      <td>2</td>
-      <td>2</td>
-      <td>2</td>
-      <td>1</td>
-      <td>...</td>
-      <td>3</td>
-      <td>2</td>
-      <td>3</td>
-      <td>3</td>
-      <td>2</td>
-      <td>2</td>
-      <td>2</td>
-      <td>2</td>
-      <td>2</td>
-      <td>Roma</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>10</td>
-      <td>17</td>
-      <td>10</td>
-      <td>13</td>
-      <td>16</td>
-      <td>9</td>
-      <td>8</td>
-      <td>6</td>
-      <td>5</td>
-      <td>4</td>
-      <td>...</td>
-      <td>2</td>
-      <td>2</td>
-      <td>2</td>
-      <td>2</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>Lazio</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>10</td>
-      <td>17</td>
-      <td>15</td>
-      <td>9</td>
-      <td>8</td>
-      <td>9</td>
-      <td>8</td>
-      <td>10</td>
-      <td>11</td>
-      <td>10</td>
-      <td>...</td>
-      <td>5</td>
-      <td>6</td>
-      <td>6</td>
-      <td>7</td>
-      <td>5</td>
-      <td>5</td>
-      <td>5</td>
-      <td>5</td>
-      <td>4</td>
-      <td>Fiorentina</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>10</td>
-      <td>3</td>
-      <td>10</td>
-      <td>13</td>
-      <td>11</td>
-      <td>8</td>
-      <td>7</td>
-      <td>7</td>
-      <td>7</td>
-      <td>8</td>
-      <td>...</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>5</td>
-      <td>Napoli</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>10</td>
-      <td>17</td>
-      <td>15</td>
-      <td>9</td>
-      <td>8</td>
-      <td>12</td>
-      <td>10</td>
-      <td>10</td>
-      <td>8</td>
-      <td>8</td>
-      <td>...</td>
-      <td>7</td>
-      <td>7</td>
-      <td>7</td>
-      <td>6</td>
-      <td>7</td>
-      <td>7</td>
-      <td>6</td>
-      <td>6</td>
-      <td>6</td>
-      <td>Genoa</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>10</td>
-      <td>10</td>
-      <td>5</td>
-      <td>6</td>
-      <td>5</td>
-      <td>4</td>
-      <td>3</td>
-      <td>3</td>
-      <td>3</td>
-      <td>4</td>
-      <td>...</td>
-      <td>5</td>
-      <td>5</td>
-      <td>5</td>
-      <td>5</td>
-      <td>6</td>
-      <td>6</td>
-      <td>7</td>
-      <td>7</td>
-      <td>7</td>
-      <td>Sampdoria</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>10</td>
-      <td>10</td>
-      <td>5</td>
-      <td>6</td>
-      <td>5</td>
-      <td>6</td>
-      <td>10</td>
-      <td>10</td>
-      <td>8</td>
-      <td>8</td>
-      <td>...</td>
-      <td>10</td>
-      <td>10</td>
-      <td>9</td>
-      <td>8</td>
-      <td>8</td>
-      <td>8</td>
-      <td>8</td>
-      <td>8</td>
-      <td>8</td>
-      <td>Inter</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>10</td>
-      <td>10</td>
-      <td>15</td>
-      <td>19</td>
-      <td>11</td>
-      <td>12</td>
-      <td>14</td>
-      <td>12</td>
-      <td>12</td>
-      <td>12</td>
-      <td>...</td>
-      <td>8</td>
-      <td>7</td>
-      <td>7</td>
-      <td>8</td>
-      <td>9</td>
-      <td>9</td>
-      <td>9</td>
-      <td>9</td>
-      <td>9</td>
-      <td>Torino</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>10</td>
-      <td>3</td>
-      <td>2</td>
-      <td>4</td>
-      <td>7</td>
-      <td>6</td>
-      <td>5</td>
-      <td>4</td>
-      <td>5</td>
-      <td>4</td>
-      <td>...</td>
-      <td>9</td>
-      <td>9</td>
-      <td>10</td>
-      <td>10</td>
-      <td>10</td>
-      <td>10</td>
-      <td>10</td>
-      <td>10</td>
-      <td>10</td>
-      <td>Milan</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>10</td>
-      <td>10</td>
-      <td>15</td>
-      <td>16</td>
-      <td>16</td>
-      <td>18</td>
-      <td>19</td>
-      <td>15</td>
-      <td>17</td>
-      <td>14</td>
-      <td>...</td>
-      <td>11</td>
-      <td>11</td>
-      <td>11</td>
-      <td>11</td>
-      <td>10</td>
-      <td>11</td>
-      <td>10</td>
-      <td>11</td>
-      <td>11</td>
-      <td>Palermo</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>10</td>
-      <td>10</td>
-      <td>15</td>
-      <td>16</td>
-      <td>16</td>
-      <td>18</td>
-      <td>19</td>
-      <td>18</td>
-      <td>15</td>
-      <td>13</td>
-      <td>...</td>
-      <td>12</td>
-      <td>13</td>
-      <td>15</td>
-      <td>16</td>
-      <td>16</td>
-      <td>16</td>
-      <td>13</td>
-      <td>11</td>
-      <td>11</td>
-      <td>Sassuolo</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>10</td>
-      <td>10</td>
-      <td>5</td>
-      <td>3</td>
-      <td>5</td>
-      <td>6</td>
-      <td>5</td>
-      <td>7</td>
-      <td>10</td>
-      <td>11</td>
-      <td>...</td>
-      <td>15</td>
-      <td>13</td>
-      <td>12</td>
-      <td>12</td>
-      <td>15</td>
-      <td>14</td>
-      <td>12</td>
-      <td>13</td>
-      <td>13</td>
-      <td>Verona</td>
-    </tr>
-    <tr>
-      <th>0</th>
-      <td>10</td>
-      <td>17</td>
-      <td>10</td>
-      <td>13</td>
-      <td>16</td>
-      <td>15</td>
-      <td>16</td>
-      <td>18</td>
-      <td>19</td>
-      <td>19</td>
-      <td>...</td>
-      <td>12</td>
-      <td>13</td>
-      <td>14</td>
-      <td>12</td>
-      <td>13</td>
-      <td>12</td>
-      <td>14</td>
-      <td>14</td>
-      <td>14</td>
-      <td>Chievo</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>10</td>
-      <td>17</td>
-      <td>19</td>
-      <td>19</td>
-      <td>19</td>
-      <td>18</td>
-      <td>12</td>
-      <td>13</td>
-      <td>15</td>
-      <td>17</td>
-      <td>...</td>
-      <td>15</td>
-      <td>16</td>
-      <td>16</td>
-      <td>14</td>
-      <td>13</td>
-      <td>14</td>
-      <td>15</td>
-      <td>15</td>
-      <td>15</td>
-      <td>Empoli</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>10</td>
-      <td>3</td>
-      <td>10</td>
-      <td>4</td>
-      <td>3</td>
-      <td>3</td>
-      <td>4</td>
-      <td>5</td>
-      <td>3</td>
-      <td>4</td>
-      <td>...</td>
-      <td>14</td>
-      <td>15</td>
-      <td>13</td>
-      <td>14</td>
-      <td>13</td>
-      <td>14</td>
-      <td>15</td>
-      <td>16</td>
-      <td>16</td>
-      <td>Udinese</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>10</td>
-      <td>10</td>
-      <td>5</td>
-      <td>9</td>
-      <td>11</td>
-      <td>15</td>
-      <td>16</td>
-      <td>13</td>
-      <td>15</td>
-      <td>16</td>
-      <td>...</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>17</td>
-      <td>Atalanta</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>10</td>
-      <td>10</td>
-      <td>15</td>
-      <td>19</td>
-      <td>20</td>
-      <td>15</td>
-      <td>16</td>
-      <td>17</td>
-      <td>12</td>
-      <td>14</td>
-      <td>...</td>
-      <td>19</td>
-      <td>19</td>
-      <td>18</td>
-      <td>18</td>
-      <td>18</td>
-      <td>18</td>
-      <td>18</td>
-      <td>18</td>
-      <td>18</td>
-      <td>Cagliari</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>10</td>
-      <td>17</td>
-      <td>19</td>
-      <td>13</td>
-      <td>16</td>
-      <td>18</td>
-      <td>19</td>
-      <td>20</td>
-      <td>20</td>
-      <td>20</td>
-      <td>...</td>
-      <td>20</td>
-      <td>20</td>
-      <td>19</td>
-      <td>20</td>
-      <td>20</td>
-      <td>19</td>
-      <td>19</td>
-      <td>19</td>
-      <td>19</td>
-      <td>Parma</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>10</td>
-      <td>3</td>
-      <td>10</td>
-      <td>9</td>
-      <td>11</td>
-      <td>12</td>
-      <td>12</td>
-      <td>15</td>
-      <td>17</td>
-      <td>18</td>
-      <td>...</td>
-      <td>18</td>
-      <td>18</td>
-      <td>19</td>
-      <td>18</td>
-      <td>19</td>
-      <td>19</td>
-      <td>19</td>
-      <td>20</td>
-      <td>20</td>
-      <td>Cesena</td>
-    </tr>
-  </tbody>
-</table>
-<p>20 rows × 40 columns</p>
-</div>
-
-
-
-This is the rank day by day. The Juventus Team has been on the top from the very first days. Let's add this information (the rank of the ownteam and the rank of the opponent) to the marks dataset.
-
-
-```python
-def rankOwnTeam (OwnTeam, day):
-    rankOwnTeam = rankDay.ix[rankDay['Team'] == OwnTeam, day-1]
-    return int(rankOwnTeam)
-
-marks_final['rankOwnTeam'] = map(lambda ownTeam, day: rankOwnTeam(ownTeam, day), marks_final['team'], marks_final['day'])
-```
-
-
-```python
-marks_final.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>player</th>
-      <th>name</th>
-      <th>team</th>
-      <th>day</th>
-      <th>goal</th>
-      <th>penalty</th>
-      <th>owngoal</th>
-      <th>mark</th>
-      <th>rankOwnTeam</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>10</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>10</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>5</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>4</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>9</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>11</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-Ok, done for the own team, let's try to add the opponent, less easy because it is dependent on the calendar.
-
-
-```python
-def playingHome (OwnTeam, day):
-    temp = games.ix[(games['day'] == day)] 
-    return (len(temp[temp['home'] == OwnTeam]))
-```
-
-
-```python
-marks_final['playingHome'] = map(lambda ownTeam, day: playingHome(ownTeam, day), marks_final['team'], marks_final['day'])
-marks_final.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>player</th>
-      <th>name</th>
-      <th>team</th>
-      <th>day</th>
-      <th>goal</th>
-      <th>penalty</th>
-      <th>owngoal</th>
-      <th>mark</th>
-      <th>rankOwnTeam</th>
-      <th>playingHome</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>10</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>10</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>4</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>9</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>11</td>
-      <td>1</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-We have added the info if it the player is playing home. it could be usefull!
-
-
-```python
-def opponentTeam (OwnTeam, day):
-    temp = games.ix[(games['day'] == day)] 
-    if (len(temp[temp['home'] == OwnTeam])):
-        opponent = games.ix[(games['day'] == day) & (games['home'] == OwnTeam), 'away'] 
+def answers (code):
+    if code == 0:
+        return 1
     else:
-        opponent = games.ix[(games['day'] == day) & (games['away'] == OwnTeam), 'home'] 
-    return str(opponent.values[0])
+        return 0
 
-
-
-marks_final['opponentTeam'] = map(lambda ownTeam, day: opponentTeam(ownTeam, day), marks_final['team'], marks_final['day'])
-```
-
-
-```python
-marks_final.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>player</th>
-      <th>name</th>
-      <th>team</th>
-      <th>day</th>
-      <th>goal</th>
-      <th>penalty</th>
-      <th>owngoal</th>
-      <th>mark</th>
-      <th>rankOwnTeam</th>
-      <th>playingHome</th>
-      <th>opponentTeam</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Verona</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>10</td>
-      <td>0</td>
-      <td>Cagliari</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>5</td>
-      <td>1</td>
-      <td>Fiorentina</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>4</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>9</td>
-      <td>0</td>
-      <td>Inter</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>11</td>
-      <td>1</td>
-      <td>Juventus</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-
-```python
-marks_final['rankOpponentTeam'] = map(lambda oppTeam, day: rankOwnTeam(oppTeam, day), marks_final['opponentTeam'], marks_final['day'])
-```
-
-
-```python
-marks_final.head()
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>player</th>
-      <th>name</th>
-      <th>team</th>
-      <th>day</th>
-      <th>goal</th>
-      <th>penalty</th>
-      <th>owngoal</th>
-      <th>mark</th>
-      <th>rankOwnTeam</th>
-      <th>playingHome</th>
-      <th>opponentTeam</th>
-      <th>rankOpponentTeam</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Verona</td>
-      <td>10</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>10</td>
-      <td>0</td>
-      <td>Cagliari</td>
-      <td>10</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>5</td>
-      <td>1</td>
-      <td>Fiorentina</td>
-      <td>15</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>4</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>9</td>
-      <td>0</td>
-      <td>Inter</td>
-      <td>6</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>11</td>
-      <td>1</td>
-      <td>Juventus</td>
-      <td>1</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-let's add some statistics (probably we will remove them because they will be strongly correlated)
-
-
-```python
-def avgPrevious5 (playerName, day):
-    marksPlayer = marks_final.ix[(marks_final['name'] == playerName) & (marks_final['day'] >= (day-5)) & (marks_final['day'] < day), 'mark']
-    return marksPlayer.mean()
-
-def avgSoFar (playerName, day):
-    marksPlayer = marks_final.ix[(marks_final['name'] == playerName) & (marks_final['day'] < day), 'mark']
-    return marksPlayer.mean()
-
-def lastMark (playerName, day):
-    marksPlayer = marks_final.ix[(marks_final['name'] == playerName) & (marks_final['day'] == day-1), 'mark']
-    return marksPlayer.mean()
-```
-
-
-```python
-marks_final['avgPrevious5'] = map(lambda playerName, day: avgPrevious5 (playerName, day), marks_final['name'], marks_final['day'])
-marks_final['avgSoFar'] = map(lambda playerName, day: avgSoFar (playerName, day), marks_final['name'], marks_final['day'])
-marks_final['LastMark'] = map(lambda playerName, day: lastMark (playerName, day), marks_final['name'], marks_final['day'])
-```
-
-For the moment, let's aim low, trying to predict if the player's mark will be over 6 (sufficient in italian culture)
-
-
-```python
-def isSuff (mark):
-    if mark>=6: return 1
+def answered (code):
+    if code == 9:
+        return 0
+    else: return 1
+    
+def voteSimpl (vote):
+    if vote==1:
+        return 1
     else: return 0
     
-marks_final['isSuff'] = map(lambda mark: isSuff (mark), marks_final['mark'])
+def percentage (x,y):
+    return float(x/float(y)*100)
 ```
 
 
 ```python
-marks_final.head()
+votes['answerSimpl'] = map (lambda code: answers(code), votes['answer'])
+votes['answered'] = map (lambda code: answered(code), votes['answer'])
+votes['voteSimpl'] = map (lambda vote: voteSimpl(vote), votes['vote'])
+```
+
+let's aggregate per question
+
+
+```python
+quests = pd.DataFrame()
+quests = votes.groupby('question_id', as_index=False).agg({"game_id": lambda x: x.count(), "user_id": lambda x: x.count(), "answered": np.sum, "answerSimpl": np.sum, "voteSimpl":  np.sum, "category_id": lambda x: x.iloc[0] }).reset_index()
+quests.head()
 ```
 
 
@@ -3956,119 +85,71 @@ marks_final.head()
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>player</th>
-      <th>name</th>
-      <th>team</th>
-      <th>day</th>
-      <th>goal</th>
-      <th>penalty</th>
-      <th>owngoal</th>
-      <th>mark</th>
-      <th>rankOwnTeam</th>
-      <th>playingHome</th>
-      <th>opponentTeam</th>
-      <th>rankOpponentTeam</th>
-      <th>avgPrevious5</th>
-      <th>avgSoFar</th>
-      <th>LastMark</th>
-      <th>isSuff</th>
+      <th>index</th>
+      <th>question_id</th>
+      <th>answerSimpl</th>
+      <th>user_id</th>
+      <th>answered</th>
+      <th>voteSimpl</th>
+      <th>game_id</th>
+      <th>category_id</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>1</td>
       <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Verona</td>
-      <td>10</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>1.0</td>
+      <td>49</td>
+      <td>72.0</td>
+      <td>72</td>
+      <td>57</td>
+      <td>72.0</td>
       <td>1</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>10</td>
-      <td>0</td>
-      <td>Cagliari</td>
-      <td>10</td>
-      <td>7.000000</td>
-      <td>7.000000</td>
-      <td>7.0</td>
+      <td>1</td>
+      <td>2.0</td>
+      <td>21</td>
+      <td>28.0</td>
+      <td>28</td>
+      <td>24</td>
+      <td>28.0</td>
       <td>1</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>5</td>
-      <td>1</td>
-      <td>Fiorentina</td>
-      <td>15</td>
-      <td>7.250000</td>
-      <td>7.250000</td>
-      <td>7.5</td>
+      <td>2</td>
+      <td>3.0</td>
+      <td>22</td>
+      <td>40.0</td>
+      <td>40</td>
+      <td>32</td>
+      <td>40.0</td>
       <td>1</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>4</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>9</td>
-      <td>0</td>
-      <td>Inter</td>
-      <td>6</td>
-      <td>6.833333</td>
-      <td>6.833333</td>
-      <td>6.0</td>
+      <td>3</td>
+      <td>4.0</td>
+      <td>30</td>
+      <td>53.0</td>
+      <td>53</td>
+      <td>37</td>
+      <td>53.0</td>
       <td>1</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>4</td>
       <td>5.0</td>
-      <td>11</td>
+      <td>26</td>
+      <td>32.0</td>
+      <td>31</td>
+      <td>24</td>
+      <td>32.0</td>
       <td>1</td>
-      <td>Juventus</td>
-      <td>1</td>
-      <td>6.750000</td>
-      <td>6.750000</td>
-      <td>6.5</td>
-      <td>0</td>
     </tr>
   </tbody>
 </table>
@@ -4076,10 +157,2354 @@ marks_final.head()
 
 
 
-Uhh, we don't have any mean for the first day of the championship. For the moment, let us feed that value with the average of the championship. 
-Alternatively, we could add a "political correct" 6.
+
+```python
+quests['positivity'] = map ( lambda x,y: np.round(percentage(x,y),2), quests['voteSimpl'],quests['game_id'])
+quests['correctness'] = map ( lambda x,y: np.round(percentage(x,y),2), quests['answerSimpl'],quests['game_id'])
+quests['answer-ness'] = map ( lambda x,y: np.round(percentage(x,y),2), quests['answered'],quests['game_id'])
+```
+
+let's have a look to the number of games (which is the number of appearances
+of each question)
 
 
 ```python
-To be continued!
+print(quests['game_id'].mean())
+plt.hist(quests['game_id'],bins=20)
+plt.xlabel('number of appearances')
+plt.ylabel('count')
+#plt.savefig('hist_questions_games2.png', bbox_inches='tight')
+plt.show()
+```
+
+    26.3630126771
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_11_1.png)
+
+
+
+let us obtain some aggregated statistics
+
+
+```python
+askedQuestions = pd.DataFrame()
+
+askedQuestions = quests.ix[:, ['question_id','game_id']].sort_values('game_id', ascending=False)
+
+#playedGames['agg_previous_value'] = playedGames['game_id'].shift(1) +  playedGames['game_id']
+
+askedQuestions['agg_previous_value'] = askedQuestions['game_id'].cumsum()
+
+askedQuestions['game_id_norm'] = (askedQuestions['game_id'] / float(askedQuestions['game_id'].sum())) * 100
+
+#playedGames.ix[playedGames['game_id_norm'] < 0, 'game_id_norm'] = 0
+
+askedQuestions['agg_previous_value_norm'] = askedQuestions['game_id_norm'].cumsum()
+
+askedQuestions.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>question_id</th>
+      <th>game_id</th>
+      <th>agg_previous_value</th>
+      <th>game_id_norm</th>
+      <th>agg_previous_value_norm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>6002</th>
+      <td>6560.0</td>
+      <td>132.0</td>
+      <td>132.0</td>
+      <td>0.012446</td>
+      <td>0.012446</td>
+    </tr>
+    <tr>
+      <th>3670</th>
+      <td>4118.0</td>
+      <td>117.0</td>
+      <td>249.0</td>
+      <td>0.011032</td>
+      <td>0.023478</td>
+    </tr>
+    <tr>
+      <th>5905</th>
+      <td>6452.0</td>
+      <td>115.0</td>
+      <td>364.0</td>
+      <td>0.010843</td>
+      <td>0.034321</td>
+    </tr>
+    <tr>
+      <th>3667</th>
+      <td>4115.0</td>
+      <td>108.0</td>
+      <td>472.0</td>
+      <td>0.010183</td>
+      <td>0.044504</td>
+    </tr>
+    <tr>
+      <th>3485</th>
+      <td>3918.0</td>
+      <td>107.0</td>
+      <td>579.0</td>
+      <td>0.010089</td>
+      <td>0.054593</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+askedQuestions.iloc[1]['agg_previous_value_norm']
+```
+
+
+
+
+    0.023477631191871649
+
+
+
+
+```python
+import matplotlib.ticker as mtick
+import matplotlib.patches as patches
+
+x = np.arange(1,len(askedQuestions['agg_previous_value_norm'])+1,1)
+fig = plt.figure(1, (7,4))
+ax = fig.add_subplot(1,1,1)
+ax.plot(x,x*100/(len(askedQuestions['agg_previous_value_norm'])+1))
+ax.plot(x,askedQuestions['agg_previous_value_norm'])
+
+ax.add_patch(
+    patches.Rectangle(
+        (0, 0),
+        #16832,
+        len(askedQuestions['agg_previous_value_norm'])/10*4,
+        #60.740781,
+        askedQuestions.iloc[len(askedQuestions['agg_previous_value_norm'])/10*4]['agg_previous_value_norm'],
+        fill=False,
+        hatch='/'
+    )
+)
+
+_ = plt.xlim(xmin=0, xmax=len(askedQuestions))
+_ = plt.ylim(ymin=0, ymax=100)
+ax.set_xticks(ticks=[len(askedQuestions)/4,len(askedQuestions)/4*2,len(askedQuestions)/4*3,len(askedQuestions)])
+vals = ax.get_xticks()
+ax.set_xticklabels(['{:3.2f}%'.format(float(x)/len(askedQuestions)*100) for x in vals])
+plt.xlabel('Questions (sorted by number of appearances)')
+plt.ylabel('Appearances (cumulative)')
+#plt.savefig('questions_games_cumulative2.png', bbox_inches='tight')
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_15_0.png)
+
+
+very interesting, 60% of the occurrences are related to the top 40% questions!
+
+
+```python
+print(quests['correctness'].mean())
+
+plt.hist(quests['correctness'],bins=20)
+plt.xlabel('correctness')
+plt.ylabel('count')
+#plt.savefig('hist_questions_correctness.png', bbox_inches='tight')
+plt.show()
+```
+
+    51.5491958737
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_17_1.png)
+
+
+distribution of the correctness
+
+
+```python
+print(quests['positivity'].mean())
+
+plt.hist(quests['positivity'],bins=20)
+plt.xlabel('positivity')
+plt.ylabel('count')
+#plt.savefig('hist_questions_positivity.png', bbox_inches='tight')
+plt.show()
+```
+
+    68.3658796918
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_19_1.png)
+
+
+Distribution of the positivity
+
+
+```python
+print(np.corrcoef( quests['game_id'],  quests['correctness'])[0, 1])
+
+quests_sorted = quests.sort_values('game_id')
+quests_sorted.plot.scatter('game_id','correctness')
+plt.show()
+```
+
+    0.154541271608
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_21_1.png)
+
+
+They appear more if they are correct: probably it was predictable (people can choose the category). The plot is a bit crowded.
+
+
+```python
+print(np.corrcoef( quests['game_id'],  quests['correctness'])[0, 1])
+
+quests_sorted = quests.sort_values('game_id')
+quests_sorted.sample(1000).plot.scatter('game_id','correctness')
+plt.show()
+```
+
+    0.154541271608
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_23_1.png)
+
+
+
+```python
+print(np.corrcoef( quests['game_id'],  quests['positivity'])[0, 1])
+
+quests_sorted = quests.sort_values('game_id')
+quests_sorted.plot.scatter('game_id','positivity')
+fit = np.polyfit(quests['game_id'], quests['positivity'], 1)
+fit_fn = np.poly1d(fit) 
+plt.xlabel('appearances')
+plt.plot(quests['game_id'], fit_fn(quests['game_id']), '--k')
+
+#plt.savefig('corr_game_positivity.png', bbox_inches='tight')
+plt.show()
+```
+
+    0.150478799667
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_24_1.png)
+
+
+the positive questions appear more frequently! Maybe it is because of the same reason? or the system proposes the most appreciated?
+
+
+```python
+print(np.corrcoef( quests['correctness'],  quests['positivity'])[0, 1])
+
+quests_sorted = quests.sample(10000).sort_values('correctness')
+quests_sorted.plot.scatter('correctness','positivity')
+
+
+
+fit = np.polyfit(quests['correctness'], quests['positivity'], 1)
+fit_fn = np.poly1d(fit) 
+plt.xlabel('correctness')
+plt.plot(quests['correctness'], fit_fn(quests['correctness']), '--k')
+
+#plt.savefig('corr_correctness_positivity2.png', bbox_inches='tight')
+plt.show()
+```
+
+    0.48700343437
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_26_1.png)
+
+
+uh very interesting! people tend to like more the questions they know. Let us have a look at the type.
+
+
+```python
+questsType = pd.DataFrame()
+questsType = votes.groupby(['question_id', 'question_type'], as_index=False).agg({"game_id": lambda x: x.count(), "answered": np.sum, "answerSimpl": np.sum, "voteSimpl":  np.sum, "category_id": lambda x: x.iloc[0] }).reset_index()
+```
+
+
+```python
+questsType['positivity'] = map ( lambda x,y: np.round(percentage(x,y),2), questsType['voteSimpl'],questsType['game_id'])
+questsType['correctness'] = map ( lambda x,y: np.round(percentage(x,y),2), questsType['answerSimpl'],questsType['game_id'])
+questsType['answer-ness'] = map ( lambda x,y: np.round(percentage(x,y),2), questsType['answered'],questsType['game_id'])
+```
+
+
+```python
+questsType.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>question_id</th>
+      <th>question_type</th>
+      <th>game_id</th>
+      <th>category_id</th>
+      <th>answerSimpl</th>
+      <th>voteSimpl</th>
+      <th>answered</th>
+      <th>positivity</th>
+      <th>correctness</th>
+      <th>answer-ness</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>52.0</td>
+      <td>1</td>
+      <td>29</td>
+      <td>42</td>
+      <td>52</td>
+      <td>80.77</td>
+      <td>55.77</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>20.0</td>
+      <td>1</td>
+      <td>20</td>
+      <td>15</td>
+      <td>20</td>
+      <td>75.00</td>
+      <td>100.00</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>2.0</td>
+      <td>0.0</td>
+      <td>28.0</td>
+      <td>1</td>
+      <td>21</td>
+      <td>24</td>
+      <td>28</td>
+      <td>85.71</td>
+      <td>75.00</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>3.0</td>
+      <td>0.0</td>
+      <td>40.0</td>
+      <td>1</td>
+      <td>22</td>
+      <td>32</td>
+      <td>40</td>
+      <td>80.00</td>
+      <td>55.00</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>4.0</td>
+      <td>0.0</td>
+      <td>39.0</td>
+      <td>1</td>
+      <td>24</td>
+      <td>29</td>
+      <td>39</td>
+      <td>74.36</td>
+      <td>61.54</td>
+      <td>100.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+avgScoreMean = questsType['correctness'].mean()
+avgScoreMedian = questsType['correctness'].median()
+stdScore = questsType['correctness'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsType['correctness'], [2.5,97.5]))
+```
+
+    avgScoreMean 51.9376343677
+    avgScoreMedian 50.0
+    stdScore 23.0419266109
+    95% of the pop is between:
+    [ 11.11  95.24]
+    
+
+Ok the avg is 50% but the interval is quite wide. Let's have a look to the positivity, the correctness. Let's have a look also to the answerness (people who just tried)
+
+
+```python
+print(np.corrcoef( questsType['correctness'],  questsType['positivity'])[0, 1])
+
+
+questsType_sorted = questsType.head(1000).sort_values('correctness')
+questsType_sorted.plot.scatter('correctness','positivity')
+plt.show()
+
+print(np.corrcoef( questsType['answer-ness'],  questsType['positivity'])[0, 1])
+
+questsType_sorted = questsType.head(1000).sort_values('answer-ness')
+questsType_sorted.plot.scatter('answer-ness','positivity')
+plt.show()
+
+print(np.corrcoef( questsType['answer-ness'],  questsType['correctness'])[0, 1])
+questsType_sorted = questsType.head(1000).sort_values('answer-ness')
+questsType_sorted.plot.scatter('answer-ness','correctness')
+plt.show()
+```
+
+    0.488562266626
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_33_1.png)
+
+
+    0.00351013982096
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_33_3.png)
+
+
+    0.0303497648239
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_33_5.png)
+
+
+as before, high correlation between correctness and positivity.
+
+
+```python
+avgScoreMean = questsType['positivity'].mean()
+avgScoreMedian = questsType['positivity'].median()
+stdScore = questsType['positivity'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsType['positivity'], [2.5,97.5]))
+```
+
+    avgScoreMean 68.5143998004
+    avgScoreMedian 70.18
+    stdScore 14.7428556075
+    95% of the pop is between:
+    [ 35.71  92.86]
+    
+
+the positivity is quite high and steady. Let us understand it is biased by the type of questions
+
+
+```python
+questsType0 = questsType[questsType['question_type'] ==0]
+questsType1 = questsType[questsType['question_type'] ==1]
+```
+
+
+```python
+avgScoreMean = questsType0['correctness'].mean()
+avgScoreMedian = questsType0['correctness'].median()
+stdScore = questsType0['correctness'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsType0['correctness'], [2.5,97.5]))
+```
+
+    avgScoreMean 51.4296481937
+    avgScoreMedian 50.0
+    stdScore 22.8260613194
+    95% of the pop is between:
+    [ 11.11  94.74]
+    
+
+
+```python
+avgScoreMean = questsType1['correctness'].mean()
+avgScoreMedian = questsType1['correctness'].median()
+stdScore = questsType1['correctness'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsType1['correctness'], [2.5,97.5]))
+```
+
+    avgScoreMean 62.8929758713
+    avgScoreMedian 65.22
+    stdScore 24.8838536402
+    95% of the pop is between:
+    [  14.29  100.  ]
+    
+
+Ok it is clear how the questions of type1 are more easy to answer. Let us have a look at their feedbacks by the users
+
+
+```python
+avgScoreMean = questsType0['positivity'].mean()
+avgScoreMedian = questsType0['positivity'].median()
+stdScore = questsType0['positivity'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsType0['positivity'], [2.5,97.5]))
+```
+
+    avgScoreMean 68.328033117
+    avgScoreMedian 70.0
+    stdScore 14.6853248952
+    95% of the pop is between:
+    [ 35.71  92.31]
+    
+
+
+```python
+avgScoreMean = questsType1['positivity'].mean()
+avgScoreMedian = questsType1['positivity'].median()
+stdScore = questsType1['positivity'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsType1['positivity'], [2.5,97.5]))
+```
+
+    avgScoreMean 72.5336246649
+    avgScoreMedian 75.0
+    stdScore 15.397627146
+    95% of the pop is between:
+    [  37.5  100. ]
+    
+
+Ok they are also slightly more appreciated. Good to know! now let's look for something less generic. The difference between questions characterized of two types of representation and the ones only textual
+
+
+```python
+def twoTypesQuest (question):
+    if len(questsType[questsType["question_id"] == question])>1:
+        return 1
+    else: return 0
+    
+questsType['twoTypesQuest'] = map ( lambda question: twoTypesQuest (question), questsType['question_id'])
+
+```
+
+
+```python
+questsTypeText1type = questsType[(questsType['twoTypesQuest'] ==0) & (questsType['question_type'] ==0)]
+questsTypeText2type = questsType[(questsType['twoTypesQuest'] ==1) & (questsType['question_type'] ==0)]
+
+```
+
+
+```python
+avgScoreMean = questsTypeText1type['correctness'].mean()
+avgScoreMedian = questsTypeText1type['correctness'].median()
+stdScore = questsTypeText1type['correctness'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsTypeText1type['correctness'], [2.5,97.5]))
+```
+
+    avgScoreMean 51.0822332855
+    avgScoreMedian 50.0
+    stdScore 22.7389063427
+    95% of the pop is between:
+    [ 11.11  94.44]
+    
+
+
+```python
+avgScoreMean = questsTypeText2type['correctness'].mean()
+avgScoreMedian = questsTypeText2type['correctness'].median()
+stdScore = questsTypeText2type['correctness'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsTypeText2type['correctness'], [2.5,97.5]))
+```
+
+    avgScoreMean 58.6109913793
+    avgScoreMedian 58.82
+    stdScore 23.438098832
+    95% of the pop is between:
+    [ 15.17625  97.83625]
+    
+
+Interestingly, the questions which can be expressed as a pictures are, generally more easy to understand and answer. Let us explore the positivity:
+
+
+```python
+avgScoreMean = questsTypeText1type['positivity'].mean()
+avgScoreMedian = questsTypeText1type['positivity'].median()
+stdScore = questsTypeText1type['positivity'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsTypeText1type['positivity'], [2.5,97.5]))
+```
+
+    avgScoreMean 68.1678410009
+    avgScoreMedian 70.0
+    stdScore 14.7072955975
+    95% of the pop is between:
+    [ 35.71  92.31]
+    
+
+
+```python
+avgScoreMean = questsTypeText2type['positivity'].mean()
+avgScoreMedian = questsTypeText2type['positivity'].median()
+stdScore = questsTypeText2type['positivity'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsTypeText2type['positivity'], [2.5,97.5]))
+```
+
+    avgScoreMean 71.6393318966
+    avgScoreMedian 73.86
+    stdScore 13.8173123832
+    95% of the pop is between:
+    [ 38.58     92.81125]
+    
+
+As predictable, they are also more appreciated. However this is predictable as we have noticed a correlation between the correctness and the feedbacks. Focus now on categories
+
+
+```python
+questsCat = pd.DataFrame()
+questsCat = questsType.groupby(['category_id'], as_index=False).agg({"question_id": lambda x: x.nunique(), "game_id": np.sum, "answered": np.sum, "answerSimpl": np.sum, "voteSimpl":  np.sum}).reset_index()
+```
+
+
+```python
+questsCat['positivity'] = map ( lambda x,y: np.round(percentage(x,y),2), questsCat['voteSimpl'],questsCat['game_id'])
+questsCat['correctness'] = map ( lambda x,y: np.round(percentage(x,y),2), questsCat['answerSimpl'],questsCat['game_id'])
+questsCat['answer-ness'] = map ( lambda x,y: np.round(percentage(x,y),2), questsCat['answered'],questsCat['game_id'])
+
+questsCat.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>category_id</th>
+      <th>game_id</th>
+      <th>answerSimpl</th>
+      <th>answered</th>
+      <th>voteSimpl</th>
+      <th>question_id</th>
+      <th>positivity</th>
+      <th>correctness</th>
+      <th>answer-ness</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>#SKIP#</td>
+      <td>199.0</td>
+      <td>162</td>
+      <td>199</td>
+      <td>147</td>
+      <td>9.0</td>
+      <td>73.87</td>
+      <td>81.41</td>
+      <td>100.00</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>1</td>
+      <td>58193.0</td>
+      <td>33288</td>
+      <td>58109</td>
+      <td>42802</td>
+      <td>1261.0</td>
+      <td>73.55</td>
+      <td>57.20</td>
+      <td>99.86</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>10</td>
+      <td>74034.0</td>
+      <td>45208</td>
+      <td>73920</td>
+      <td>58143</td>
+      <td>1372.0</td>
+      <td>78.54</td>
+      <td>61.06</td>
+      <td>99.85</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>11</td>
+      <td>51731.0</td>
+      <td>26075</td>
+      <td>51662</td>
+      <td>33458</td>
+      <td>3507.0</td>
+      <td>64.68</td>
+      <td>50.40</td>
+      <td>99.87</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>12</td>
+      <td>42914.0</td>
+      <td>20035</td>
+      <td>42853</td>
+      <td>26710</td>
+      <td>3403.0</td>
+      <td>62.24</td>
+      <td>46.69</td>
+      <td>99.86</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+Discard, for now, these categories
+
+
+```python
+questsCat = questsCat[questsCat['category_id'] != '#SKIP#']
+questsCat = questsCat[questsCat['category_id'] != 'Null']
+```
+
+
+```python
+avgScoreMean = questsCat['question_id'].mean()
+avgScoreMedian = questsCat['question_id'].median()
+stdScore = questsCat['question_id'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsCat['question_id'], [2.5,97.5]))
+```
+
+    avgScoreMean 2003.55
+    avgScoreMedian 1879.0
+    stdScore 834.669520166
+    95% of the pop is between:
+    [ 1013.675  3562.125]
+    
+
+The categories are very unbalanced.
+
+
+```python
+print(questsCat['question_id'].mean())
+
+questsCat['category_id'] = map (lambda x: int(x), questsCat['category_id'])
+_ = questsCat.sort_values('category_id').plot.bar(y='question_id', x='category_id')
+plt.ylabel('number of possible questions')
+_.legend_.remove()
+#plt.savefig('plot_category_questions.png', bbox_inches='tight')
+plt.show()
+```
+
+    2003.55
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_58_1.png)
+
+
+
+```python
+avgScoreMean = questsCat['game_id'].mean()
+avgScoreMedian = questsCat['game_id'].median()
+stdScore = questsCat['game_id'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsCat['game_id'], [2.5,97.5]))
+```
+
+    avgScoreMean 52849.6
+    avgScoreMedian 51803.0
+    stdScore 12844.3257404
+    95% of the pop is between:
+    [ 29295.225  76526.7  ]
+    
+
+Their distribution in the games, instead is more uniform
+
+
+```python
+np.corrcoef( questsCat['game_id'],  questsCat['question_id'])[0, 1]
+```
+
+
+
+
+    0.06246680003354263
+
+
+
+
+```python
+avgScoreMean = questsCat['correctness'].mean()
+avgScoreMedian = questsCat['correctness'].median()
+stdScore = questsCat['correctness'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsCat['correctness'], [2.5,97.5]))
+```
+
+    avgScoreMean 52.701
+    avgScoreMedian 52.51
+    stdScore 3.89205520056
+    95% of the pop is between:
+    [ 46.78025  60.32375]
+    
+
+
+```python
+avgScoreMean = questsCat['positivity'].mean()
+avgScoreMedian = questsCat['positivity'].median()
+stdScore = questsCat['positivity'].std()
+print('avgScoreMean ' + str(avgScoreMean))
+print('avgScoreMedian ' + str(avgScoreMedian))
+print('stdScore '+ str(stdScore))
+print('95% of the pop is between:')
+print(np.percentile(questsCat['positivity'], [2.5,97.5]))
+```
+
+    avgScoreMean 68.5655
+    avgScoreMedian 71.235
+    stdScore 6.7528305761
+    95% of the pop is between:
+    [ 55.8805  77.267 ]
+    
+
+Their correctness and positivity, is instead, very balanced
+
+
+```python
+_ = questsCat.plot.bar(y='positivity', x='category_id')
+plt.show()
+
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_65_0.png)
+
+
+
+```python
+min_max_scaler = preprocessing.MinMaxScaler()
+questsCat['question_id_norm'] = min_max_scaler.fit_transform(questsCat['question_id'])
+questsCat['game_id_norm'] = min_max_scaler.fit_transform(questsCat['game_id'])                                                         
+
+_ = questsCat.boxplot(['positivity', 'correctness'])
+plt.show()
+#not interesting
+
+
+_ = questsCat.boxplot(['question_id_norm', 'game_id_norm'])
+plt.ylabel('Normalized values')
+plt.xticks([1, 2], ['Questions per category', 'Appearances in games'])
+#plt.savefig('distr_category_questions_games.png', bbox_inches='tight')
+plt.show()
+plt.show()
+```
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_66_1.png)
+
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_66_2.png)
+
+
+
+```python
+print(np.corrcoef( questsCat['game_id'],  questsCat['positivity'])[0, 1])
+
+fit = np.polyfit(questsCat['game_id'], questsCat['positivity'], 1)
+fit_fn = np.poly1d(fit) 
+
+
+questsCatSorted = questsCat.sort_values('game_id')
+questsCatSorted.plot.scatter('game_id','positivity')
+
+plt.xlabel('number of appearances in games (categories)')
+
+plt.plot(questsCat['game_id'], fit_fn(questsCat['game_id']), '--k')
+#plt.savefig('corr_positivity_games.png', bbox_inches='tight')
+plt.show()
+```
+
+    0.628175927796
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_67_1.png)
+
+
+The system is already using a recc system to propose the most appreciated questions. Or, instead the people just select the categories they love more. So they are more appreciated and also more "played"
+
+
+```python
+print(np.corrcoef( questsCat['game_id'],  questsCat['question_id'])[0, 1])
+
+questsCatSorted = questsCat.sort_values('question_id')
+questsCatSorted.plot.scatter('question_id','game_id')
+
+plt.xlabel('number of possible questions (categories)')
+plt.ylabel('Appearances in games')
+#plt.savefig('corr_questions_games.png', bbox_inches='tight')
+plt.show()
+```
+
+    0.0624668000335
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_69_1.png)
+
+
+no relationship between the the question per category and the categories appearances
+
+
+```python
+print(np.corrcoef( questsCat['correctness'],  questsCat['positivity'])[0, 1])
+
+questsCatSorted = questsCat.sort_values('correctness')
+questsCatSorted.plot.scatter('correctness','positivity')
+
+plt.show()
+```
+
+    0.732173457654
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_71_1.png)
+
+
+very predictable, as before: positive only if they answer correctly
+
+let's aggregate per game
+
+
+```python
+games = votes.groupby(['game_id'], as_index=False).agg({"user_id": lambda x: x.nunique(), "question_id": lambda x: x.count(), "answered": np.sum, "answerSimpl": np.sum, "voteSimpl":  np.sum, 'question_type' : np.sum })
+games['game_id'].nunique()
+```
+
+
+
+
+    539198
+
+
+
+
+```python
+games['positivity'] = map ( lambda x,y: np.round(percentage(x,y),2), games['voteSimpl'],games['question_id'])
+games['correctness'] = map ( lambda x,y: np.round(percentage(x,y),2), games['answerSimpl'],games['question_id'])
+games['answer-ness'] = map ( lambda x,y: np.round(percentage(x,y),2), games['answered'],games['question_id'])
+games['picture-ness'] = map ( lambda x,y: np.round(percentage(x,y),2), games['question_type'],games['question_id'])
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```python
+print(len(games))
+print(games.ix[games['user_id'] == 2, 'question_id'].mean())
+print(len(games[games['user_id'] == 2]))
+print(len(games[games['user_id'] == 2])/float(len(games))*100)
+plt.hist(games.ix[games['user_id'] == 2, 'question_id'],bins=10)
+
+plt.xlabel('number of questions')
+plt.ylabel('count')
+plt.savefig('games_questions2.png', bbox_inches='tight')
+plt.show()
+```
+
+    539198
+    3.57255630369
+    64605
+    11.9816839083
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_78_1.png)
+
+
+Some games are played by just 1 player!
+
+```python
+print(games.ix[games['user_id'] == 1, 'question_id'].mean())
+
+print(len(games[games['user_id'] == 1]))
+print(len(games[games['user_id'] == 1])/float(len(games))*100)
+
+plt.hist(games.ix[games['user_id'] == 1, 'question_id'],bins=10)
+
+plt.xlabel('number of questions')
+plt.ylabel('count')
+plt.savefig('games_questions1.png', bbox_inches='tight')
+plt.show()
+```
+
+    1.74840126171
+    474593
+    88.0183160917
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_79_1.png)
+
+
+
+```python
+
+
+plt.hist(games['question_id'],bins=10)
+
+plt.xlabel('number of questions')
+plt.ylabel('games count')
+plt.savefig('games_questions_all.png', bbox_inches='tight')
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_80_0.png)
+
+
+This is very strange: some games have 2 players while some others has 1. 
+    the only explanation I can think about is that there are just the 
+    data about the rated questions, which, maybe are a few per games.
+    Hence this data are not suggested to extract statistics related to games, but, still
+    can be useful for questions and users informations.
+
+let's aggregate per user
+
+
+```python
+users = votes.groupby(['user_id'], as_index=False).agg({"game_id": lambda x: x.nunique(), "question_id": lambda x: x.count(), "answered": np.sum, "answerSimpl": np.sum, "voteSimpl":  np.sum, 'question_type' : np.sum }).reset_index()
+```
+
+
+```python
+users['positivity'] = map ( lambda x,y: np.round(percentage(x,y),2), users['voteSimpl'],users['question_id'])
+users['correctness'] = map ( lambda x,y: np.round(percentage(x,y),2), users['answerSimpl'],users['question_id'])
+users['answer-ness'] = map ( lambda x,y: np.round(percentage(x,y),2), users['answered'],users['question_id'])
+```
+
+
+```python
+users.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>user_id</th>
+      <th>answerSimpl</th>
+      <th>answered</th>
+      <th>voteSimpl</th>
+      <th>question_type</th>
+      <th>game_id</th>
+      <th>question_id</th>
+      <th>positivity</th>
+      <th>correctness</th>
+      <th>answer-ness</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>12.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>100.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>63.0</td>
+      <td>2</td>
+      <td>4</td>
+      <td>4</td>
+      <td>1.0</td>
+      <td>4.0</td>
+      <td>4.0</td>
+      <td>100.0</td>
+      <td>50.00</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>407.0</td>
+      <td>60</td>
+      <td>85</td>
+      <td>68</td>
+      <td>2.0</td>
+      <td>44.0</td>
+      <td>85.0</td>
+      <td>80.0</td>
+      <td>70.59</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>706.0</td>
+      <td>1</td>
+      <td>3</td>
+      <td>3</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>100.0</td>
+      <td>33.33</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>718.0</td>
+      <td>1</td>
+      <td>2</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>2.0</td>
+      <td>50.0</td>
+      <td>50.00</td>
+      <td>100.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+print(users['question_id'].mean())
+print(users['game_id'].mean())
+```
+
+    18.4468640206
+    10.5020176018
+    
+
+
+```python
+plt.hist(users['game_id'],bins=100, range=(0, 100))
+plt.xlabel('number of played games')
+plt.ylabel('number of players')
+plt.savefig('hist_played_games_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_87_0.png)
+
+
+
+```python
+len(users[users['game_id'] == 1]) / float(len(users)) * 100
+```
+
+
+
+
+    18.041882631231086
+
+
+
+
+```python
+(len(users[users['game_id'] <=3]))/ float(len(users)) * 100
+```
+
+
+
+
+    38.181375447872824
+
+
+
+let us explore correlations
+
+
+```python
+np.corrcoef(users['game_id'],users['question_id'])[0,1]
+```
+
+
+
+
+    0.98969409280107545
+
+
+
+
+```python
+np.corrcoef(users['correctness'],users['question_id'])[0,1]
+```
+
+
+
+
+    0.0064310028086971569
+
+
+
+
+```python
+users.sample(10000).plot.scatter('correctness','question_id')
+plt.savefig('corr_question_correctness.png', bbox_inches='tight')
+plt.ylabel('number of answered questions')
+plt.xlabel('percentage of correct answers')
+plt.savefig('corr_question_correctness.png', bbox_inches='tight')
+
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_93_0.png)
+
+
+
+```python
+np.corrcoef(users['positivity'],users['question_id'])[0,1]
+```
+
+
+
+
+    0.10247536990881757
+
+
+
+
+```python
+users.sample(10000).plot.scatter('positivity','question_id')
+plt.ylabel('number of answered questions')
+plt.xlabel('percentage of appreciated questions')
+plt.savefig('corr_question_positivity.png', bbox_inches='tight')
+
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_95_0.png)
+
+
+they are not discouraged! the positivity seems more effective though
+
+the statistics about the questions are very similar
+
+
+```python
+plt.hist(users['question_id'],bins=100, range=(0, 100))
+
+plt.xlabel('number of answered questions')
+plt.ylabel('number of players')
+plt.savefig('hist_answered_question_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_98_0.png)
+
+
+
+```python
+(len(users[users['question_id'] <=5]))/ float(len(users)) * 100
+```
+
+
+
+
+    38.790134622743246
+
+
+
+Lot of players with less than 5 questions answered
+
+
+```python
+plt.hist(users['game_id'],bins=100, range=(0, 100))
+
+plt.xlabel('number of played games')
+plt.ylabel('number of players')
+plt.savefig('hist_played_games_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_101_0.png)
+
+
+Almost 1 rated question per answer. Let's obtain some aggregated statistics
+
+
+```python
+playedGames = pd.DataFrame()
+
+playedGames = users.ix[:, ['user_id','game_id']].sort_values('game_id', ascending=False)
+
+#playedGames['agg_previous_value'] = playedGames['game_id'].shift(1) +  playedGames['game_id']
+
+playedGames['agg_previous_value'] = playedGames['game_id'].cumsum()
+
+playedGames['game_id_norm'] = (playedGames['game_id'] / float(playedGames['game_id'].sum())) * 100
+
+#playedGames.ix[playedGames['game_id_norm'] < 0, 'game_id_norm'] = 0
+
+playedGames['agg_previous_value_norm'] = playedGames['game_id_norm'].cumsum()
+
+playedGames.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>game_id</th>
+      <th>agg_previous_value</th>
+      <th>game_id_norm</th>
+      <th>agg_previous_value_norm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>46798</th>
+      <td>1.099269e+09</td>
+      <td>852.0</td>
+      <td>852.0</td>
+      <td>0.141106</td>
+      <td>0.141106</td>
+    </tr>
+    <tr>
+      <th>12460</th>
+      <td>1.714551e+06</td>
+      <td>727.0</td>
+      <td>1579.0</td>
+      <td>0.120404</td>
+      <td>0.261509</td>
+    </tr>
+    <tr>
+      <th>20817</th>
+      <td>2.226343e+06</td>
+      <td>628.0</td>
+      <td>2207.0</td>
+      <td>0.104007</td>
+      <td>0.365517</td>
+    </tr>
+    <tr>
+      <th>32482</th>
+      <td>3.164324e+06</td>
+      <td>577.0</td>
+      <td>2784.0</td>
+      <td>0.095561</td>
+      <td>0.461078</td>
+    </tr>
+    <tr>
+      <th>12127</th>
+      <td>1.695558e+06</td>
+      <td>559.0</td>
+      <td>3343.0</td>
+      <td>0.092580</td>
+      <td>0.553657</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+import matplotlib.ticker as mtick
+import matplotlib.patches as patches
+
+x = np.arange(1,len(playedGames['agg_previous_value_norm'])+1,1)
+fig = plt.figure(1, (7,4))
+ax = fig.add_subplot(1,1,1)
+ax.plot(x,x*100/(len(playedGames['agg_previous_value_norm'])+1))
+ax.plot(x,playedGames['agg_previous_value_norm'])
+
+ax.add_patch(
+    patches.Rectangle(
+        (0, 0),
+        17608,
+        75.000372,
+        fill=False,
+        hatch='/'
+  )
+)
+
+_ = plt.xlim(xmin=0, xmax=57524)
+_ = plt.ylim(ymin=0, ymax=100)
+ax.set_xticks(ticks=[57524/4,57524/4*2,57524/4*3,57524])
+vals = ax.get_xticks()
+ax.set_xticklabels(['{:3.2f}%'.format(float(x)/57524*100) for x in vals])
+plt.xlabel('Players (sorted by number of games played)')
+plt.ylabel('Played Games (cumulative)')
+plt.savefig('users_games.png', bbox_inches='tight')
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_104_0.png)
+
+
+30% of the users player 75% of the games. This is huge! very similar behavior with the questions
+
+
+```python
+playedQuestion = pd.DataFrame()
+
+playedQuestion = users.ix[:, ['user_id','question_id']].sort_values('question_id', ascending=False)
+
+#playedGames['agg_previous_value'] = playedGames['game_id'].shift(1) +  playedGames['game_id']
+
+playedQuestion['agg_previous_value'] = playedQuestion['question_id'].cumsum()
+
+playedQuestion['question_id_norm'] = (playedQuestion['question_id'] / float(playedQuestion['question_id'].sum())) * 100
+
+playedQuestion.ix[playedQuestion['question_id_norm'] < 0, 'question_id_norm'] = 0
+
+playedQuestion['agg_previous_value_norm'] = playedQuestion['question_id_norm'].cumsum()
+
+playedQuestion.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>question_id</th>
+      <th>agg_previous_value</th>
+      <th>question_id_norm</th>
+      <th>agg_previous_value_norm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>46798</th>
+      <td>1.099269e+09</td>
+      <td>1596.0</td>
+      <td>1596.0</td>
+      <td>0.150483</td>
+      <td>0.150483</td>
+    </tr>
+    <tr>
+      <th>12460</th>
+      <td>1.714551e+06</td>
+      <td>1261.0</td>
+      <td>2857.0</td>
+      <td>0.118897</td>
+      <td>0.269380</td>
+    </tr>
+    <tr>
+      <th>20817</th>
+      <td>2.226343e+06</td>
+      <td>1142.0</td>
+      <td>3999.0</td>
+      <td>0.107677</td>
+      <td>0.377056</td>
+    </tr>
+    <tr>
+      <th>32482</th>
+      <td>3.164324e+06</td>
+      <td>1077.0</td>
+      <td>5076.0</td>
+      <td>0.101548</td>
+      <td>0.478604</td>
+    </tr>
+    <tr>
+      <th>12127</th>
+      <td>1.695558e+06</td>
+      <td>1029.0</td>
+      <td>6105.0</td>
+      <td>0.097022</td>
+      <td>0.575626</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+playedQuestion['question_id'].mean()
+```
+
+
+
+
+    18.446864020593452
+
+
+
+
+```python
+import matplotlib.ticker as mtick
+import matplotlib.patches as patches
+
+x = np.arange(1,len(playedQuestion['agg_previous_value_norm'])+1,1)
+fig = plt.figure(1, (7,4))
+ax = fig.add_subplot(1,1,1)
+ax.plot(x,x*100/(len(playedQuestion['agg_previous_value_norm'])+1))
+ax.plot(x,playedQuestion['agg_previous_value_norm'])
+
+ax.add_patch(
+    patches.Rectangle(
+        (0, 0),
+        16175,
+        75.000372,
+        fill=False,
+        hatch='/'
+    )
+)
+
+
+_ = plt.xlim(xmin=-100, xmax=57524)
+_ = plt.ylim(ymin=0, ymax=100)
+ax.set_xticks(ticks=[57524/4,57524/4*2,57524/4*3,57524])
+vals = ax.get_xticks()
+
+ax.set_xticklabels(['{:3.2f}%'.format(float(x)/57524*100) for x in vals])
+plt.xlabel('Players (sorted by number of questions answered)')
+plt.ylabel('Answered Questions (cumulative)')
+plt.savefig('users_questions.png', bbox_inches='tight')
+
+plt.show()
+```
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_108_0.png)
+
+
+
+```python
+users['positivePerGame'] = map ( lambda x,y: np.round(x/float(y),2), users['voteSimpl'],users['game_id'])
+users['correctPerGame'] = map ( lambda x,y: np.round(x/float(y),2), users['answerSimpl'],users['game_id'])
+users['answerPerGame'] = map ( lambda x,y: np.round(x/float(y),2), users['answered'],users['game_id'])
+users['positivityTotal'] = map ( lambda x,y: np.round(percentage(x,y),2), users['voteSimpl'],users['question_id'])
+users['correctnessTotal'] = map ( lambda x,y: np.round(percentage(x,y),2), users['answerSimpl'],users['question_id'])
+users['answer-nessTotal'] = map ( lambda x,y: np.round(percentage(x,y),2), users['answered'],users['question_id'])
+```
+
+
+```python
+users.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>user_id</th>
+      <th>answerSimpl</th>
+      <th>answered</th>
+      <th>voteSimpl</th>
+      <th>question_type</th>
+      <th>game_id</th>
+      <th>question_id</th>
+      <th>positivity</th>
+      <th>correctness</th>
+      <th>answer-ness</th>
+      <th>positivePerGame</th>
+      <th>correctPerGame</th>
+      <th>answerPerGame</th>
+      <th>positivityTotal</th>
+      <th>correctnessTotal</th>
+      <th>answer-nessTotal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>12.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>100.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>1.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>100.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>63.0</td>
+      <td>2</td>
+      <td>4</td>
+      <td>4</td>
+      <td>1.0</td>
+      <td>4.0</td>
+      <td>4.0</td>
+      <td>100.0</td>
+      <td>50.00</td>
+      <td>100.0</td>
+      <td>1.00</td>
+      <td>0.50</td>
+      <td>1.00</td>
+      <td>100.0</td>
+      <td>50.00</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>407.0</td>
+      <td>60</td>
+      <td>85</td>
+      <td>68</td>
+      <td>2.0</td>
+      <td>44.0</td>
+      <td>85.0</td>
+      <td>80.0</td>
+      <td>70.59</td>
+      <td>100.0</td>
+      <td>1.55</td>
+      <td>1.36</td>
+      <td>1.93</td>
+      <td>80.0</td>
+      <td>70.59</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>706.0</td>
+      <td>1</td>
+      <td>3</td>
+      <td>3</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>100.0</td>
+      <td>33.33</td>
+      <td>100.0</td>
+      <td>3.00</td>
+      <td>1.00</td>
+      <td>3.00</td>
+      <td>100.0</td>
+      <td>33.33</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>718.0</td>
+      <td>1</td>
+      <td>2</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>2.0</td>
+      <td>50.0</td>
+      <td>50.00</td>
+      <td>100.0</td>
+      <td>1.00</td>
+      <td>1.00</td>
+      <td>2.00</td>
+      <td>50.0</td>
+      <td>50.00</td>
+      <td>100.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+let's mine other info about the user
+
+
+```python
+
+print(users['correctness'].mean())
+
+plt.hist(users['correctness'],bins=20)
+
+plt.xlabel('right answers per player (percentages)')
+plt.ylabel('players')
+plt.savefig('hist_correctness_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+    53.0714472815
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_112_1.png)
+
+
+
+```python
+print(users['positivity'].mean())
+
+plt.hist(users['positivity'],bins=20)
+
+plt.xlabel('fraction of answers positively rated')
+plt.ylabel('players')
+plt.savefig('hist_positively_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+    63.0030728424
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_113_1.png)
+
+
+try to understand which is the impact of the newbies
+
+
+```python
+usersSerious= users[users['question_id']>5]
+usersNewbies= users[users['question_id']<=5]
+```
+
+
+```python
+print(usersSerious['correctness'].mean())
+
+plt.hist(usersSerious['correctness'],bins=60)
+
+plt.xlabel('right answers per player (percentages)')
+plt.ylabel('players')
+plt.savefig('hist_correctnessSerious_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+    51.6071246306
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_116_1.png)
+
+
+
+```python
+print(usersSerious['positivity'].mean())
+
+plt.hist(usersSerious['positivity'],bins=20)
+
+plt.xlabel('fraction of answers positively rated')
+plt.ylabel('players')
+plt.savefig('hist_positiveSerious_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+    66.1663071153
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_117_1.png)
+
+
+way better, even if I suspect there are some cheaters =)
+
+
+```python
+print(usersNewbies['correctness'].mean())
+
+plt.hist(usersNewbies['correctness'],bins=20)
+
+plt.xlabel('right answers per player (percentage)s')
+plt.ylabel('players')
+plt.savefig('hist_correctnessNewbies_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+    55.3821119182
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_119_1.png)
+
+
+
+```python
+print(usersNewbies['positivity'].mean())
+
+plt.hist(usersNewbies['positivity'],bins=20)
+
+plt.xlabel('right answers per player (percentage)s')
+plt.ylabel('players')
+plt.savefig('hist_positivityNewbies_0-100.png', bbox_inches='tight')
+plt.show()
+```
+
+    58.0115680208
+    
+
+
+![png](/DataAnalysis_Quiz_files/DataAnalysis_Quiz_120_1.png)
+
+
+Ok, the newbies seem to be better players than more experience player. 
+The distribution is very different and it is clear that this has not happened by chance.
+However, just to "show-off" a bit, let's see what we could have done to understand
+if it has happened by chance. We will use a permutation based statistical hypothesis
+testing (A/B test).
+Before proceeding, let's prepare our tools:
+    - the function to deliver the permutation of the two sets
+    - the function to deliver the measured statistics of the permutations
+    - a modified mean function, since the usual permutation replicate function needs a function with 2 arguments as input
+
+
+```python
+from __future__ import division
+def permutation_sample(data1, data2):
+    """Generate a permutation sample from two data sets."""
+    data = np.concatenate((data1,data2),)
+    permuted_data = np.random.permutation(data)
+    perm_sample_1 = permuted_data[:len(data1)]
+    perm_sample_2 = permuted_data[len(data1):]
+    return perm_sample_1, perm_sample_2
+
+def draw_perm_reps(data_1, data_2, func, size=1):
+    """Generate multiple permutation replicates."""
+
+    perm_replicates = np.empty(size)
+    for i in range(size):
+        perm_sample_1, perm_sample_2 = permutation_sample(data_1,data_2)
+        # Compute the test statistic
+        perm_replicates[i] = func(perm_sample_1,perm_sample_2)
+    return perm_replicates
+
+def mean4perm(data1, data2):
+    """mean of the first data"""
+    m = np.sum(data1) / len(data1)
+    return m
+```
+
+
+```python
+print(usersNewbies['correctness'].mean())
+print(usersSerious['correctness'].mean())
+```
+
+    55.3821119182
+    51.6071246306
+    
+
+My null ipothesis is that the number of answered question do not affect the correctness. Let's misurate which is the probability to have a more extreme (higher in this case) correctness mean with a permutation test. Our threshold (Alpha) will be 0.05, corresponding to include the 95% of the population. If our p values will be under this threshold, we will reject the null hypothesis.
+
+
+```python
+from __future__ import division
+
+
+perm_replicates = draw_perm_reps(usersNewbies['correctness'], usersSerious['correctness'], mean4perm, 10000)
+
+p = np.sum(perm_replicates >= usersNewbies['correctness'].mean()) / len(perm_replicates)
+print('p-value = '+str(p))
+```
+
+    p-value = 0.0
+    
+
+As expected, since the data distributions were very different from each other, the p-value
+is very low (0!) and, hece, very significant. We definetely reject the null hypothesis (the distribution of the correct answers
+                                                                               is not affected by the number of played games)
+
+What else we can do with the data we have? Since we have seen how appreciation is one of the factor pushing people to keep playing, why don't we think about something to increase the positivity? Something to propose the users the question they like? 
+Let's have a look to a naive implementation of a Recommendation System based on frequent itemset mining and association rule. This technique is a very popular data mining tool used to extract correlation and rules in => then. We will use this to propose the users some questions on the basis on their previous likes.
+
+
+```python
+import csv
+
+votes=votes[votes['vote'] == 1]
+userDict = {}
+
+for user in votes['user_id'].drop_duplicates():
+    questions = list(votes.ix[votes['user_id']==user,'question_id'].drop_duplicates())
+    userDict[user]=questions
+
+with open('dict.csv', 'wb') as csv_file:
+    writer = csv.writer(csv_file)
+    for key, value in userDict.items():
+       writer.writerow(value)
+```
+
+write the dictionary to a csv file. In this way, we are able to apply a common frequent itemset and 
+association rules miner. I have used the Eclat implementation by Christian Borgelt but
+there are plenty of them. 
+
+Import now the obtained rules. We have also obtained the occurrences of each question.
+In this way, we are also able to propose the most appreciated questions in case
+the rec system is not able to propose something ad hoc for the user.
+
+
+```python
+freq = pd.read_csv('freq.csv', header=None)
+rules = pd.read_csv('rules_classic.csv', header=None)
+```
+
+
+```python
+rules.columns = ['then','if','supp','conf']
+freq.columns = ['question_id','supp']
+```
+
+
+```python
+rules.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>then</th>
+      <th>if</th>
+      <th>supp</th>
+      <th>conf</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>38255</td>
+      <td>6704</td>
+      <td>0.015882</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>19173</td>
+      <td>38136</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>13345</td>
+      <td>14621</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>9930</td>
+      <td>32825</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>12423</td>
+      <td>29149</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+freq.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>question_id</th>
+      <th>supp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3918</td>
+      <td>0.188597</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>58</td>
+      <td>0.182641</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6560</td>
+      <td>0.180656</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>6452</td>
+      <td>0.170730</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1062</td>
+      <td>0.168745</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+reorder the columns (i like the if before the then on the left!)
+
+
+```python
+cols = rules.columns.tolist()
+cols.remove('if')
+cols.insert(0,'if')
+cols
+```
+
+
+
+
+    ['if', 'then', 'supp', 'conf']
+
+
+
+
+```python
+rules = rules[cols]
+rules = rules.sort_values(['supp','conf'], ascending = False)
+```
+
+
+```python
+rules['if'] = map(lambda x: int(x), rules['if'])
+rules['then'] = map(lambda x: int(x), rules['then'])
+rules.head()
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>if</th>
+      <th>then</th>
+      <th>supp</th>
+      <th>conf</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>6704</td>
+      <td>38255</td>
+      <td>0.015882</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>38136</td>
+      <td>19173</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>14621</td>
+      <td>13345</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>32825</td>
+      <td>9930</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>29149</td>
+      <td>12423</td>
+      <td>0.011911</td>
+      <td>50.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+Let's create an example for which we know the desired output. Select 1 player and add to his history two questions: one is in the if value and the second is the very first suggested question of that specific rule. The 'engine' should propose the second in line question for that user (in this case they all have the same support and confidence so it just take the first, but the system should select the most reliable (support and confidence) one in general).
+
+
+```python
+#let's imagine a player with his historic collection of liked questions
+
+playerId = 3.673360e+05
+
+questionsPlayer = np.array(votes.ix[votes['user_id'] == 3.673360e+05, 'question_id'].values)
+questionsPlayer = np.append(questionsPlayer, 22386)
+questionsPlayer = np.append(questionsPlayer, 4358)
+
+questionsPlayer
+
+```
+
+
+
+
+    array([ 21691.,  30762.,  17657.,   6396.,  14403.,   6566.,  34752.,
+            24282.,   7640.,  19430.,  15943.,  23899.,   3147.,  31444.,
+            40463.,  10469.,   9546.,  40570.,  41865.,  23239.,  30825.,
+             9295.,   9633.,  22386.,   4358.])
+
+
+
+
+```python
+rules[(rules['if'] == 4358)]
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>if</th>
+      <th>then</th>
+      <th>supp</th>
+      <th>conf</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>227</th>
+      <td>4358</td>
+      <td>22386</td>
+      <td>0.007941</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>228</th>
+      <td>4358</td>
+      <td>31313</td>
+      <td>0.007941</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>229</th>
+      <td>4358</td>
+      <td>41631</td>
+      <td>0.007941</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>230</th>
+      <td>4358</td>
+      <td>29024</td>
+      <td>0.007941</td>
+      <td>50.0</td>
+    </tr>
+    <tr>
+      <th>231</th>
+      <td>4358</td>
+      <td>23814</td>
+      <td>0.007941</td>
+      <td>50.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+# questionsPlayer = liked question
+def Rec (questionsPlayer):
+    """Propose, if possible, a question based on the history of the rates"""
+    found = False
+    
+    
+    #analyze the history, starting from the last appreciated question
+    questionsPlayer = questionsPlayer[::-1]
+        
+    for question in questionsPlayer:
+        if (found): break
+        if int(question) in rules['if'].values:    #look through the rules if column
+            proposed = rules.ix[rules['if'] == question, 'then'].values
+            for proposedQuestion in proposed:
+                if (found): break
+                if (proposedQuestion not in questionsPlayer): #it should not be repated
+                    #of course, a more advanced engine would try to avoid the not like questions
+                    print ('proposed question: '+str(proposedQuestion))
+                    found = True
+                    break
+    #if it was not possible to exploit the history, let's propose the most appreciated one
+    if (found == False): #it means that there were no rules
+        for proposedQuestion in freq['question_id']: #rules are already sorted
+            if (proposedQuestion not in questionsPlayer):
+                print ('proposed question: '+str(proposedQuestion))
+                found = True
+                break
+    #no suggestions, sorry
+    if (found == False):
+        print('sorry, no suggestions')
+        
+
+
+
+```
+
+
+```python
+
 ```
