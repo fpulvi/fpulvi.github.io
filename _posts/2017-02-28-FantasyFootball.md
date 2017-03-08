@@ -6,10 +6,10 @@ categories: use-case
 ---
 
 In this project, we will try to predict the performances of the players of Italian football championship Serie A.
-The project is meant in the context of Fantasy Football, a popular player in which a group of friends organize a virtual
-team of real seria A players. The aim of the game is reach the highest score, given the score the sum of the performance evaluation marks
+The project is meant in the context of Fantasy Football, a popular game in which a group of friends organize a virtual
+team of real serie A players. The aim of the game is to score more than the opponen (the score is the sum of the performance evaluation marks)
 of the players of your team. 
-Predicting the mark of your players could definitely be an advantage for a fantasy football coach.
+Predicting the marks of your players could definitely be an advantage for a fantasy football coach.
 
 In this first notebook, we will create the dataset and do a lot of feature engineering.
 
