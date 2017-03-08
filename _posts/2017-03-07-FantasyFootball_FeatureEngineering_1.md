@@ -1,3 +1,10 @@
+---
+layout: post
+title:  "Fantasy Football"
+date:   2017-03-07 13:51:05 +0100
+categories: use-case
+---
+
 
 In this project, we will try to predict the performances of the players of Italian football championship Serie A.
 The project is meant in the context of Fantasy Football, a popular player in which a group of friends organize a virtual
