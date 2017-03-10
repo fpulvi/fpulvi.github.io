@@ -3409,7 +3409,7 @@ plt.show()
 ```
 
 
-![png](FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_54_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_54_0.png)
 
 
 
@@ -3461,7 +3461,7 @@ plt.show()
 ```
 
 
-![png](FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_60_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_60_0.png)
 
 
 
