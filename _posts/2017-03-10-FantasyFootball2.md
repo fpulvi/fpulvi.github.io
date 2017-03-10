@@ -7,6 +7,10 @@ categories: use-case
 
 
 
+
+In this second part of the analysis, we will apply some machine learning techniques to predict if the performance of the players will be over the mark of 6.
+
+
 ```python
 #import
 
@@ -17,8 +21,6 @@ marks_final= pd.read_csv('dataset_2015_marks.csv', index_col=0)
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 ```
-
-In this second part of the analysis, we will apply some machine learning techniques to predict if the performance of the players will be over the mark of 6.
 
 
 ```python
