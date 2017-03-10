@@ -2154,7 +2154,7 @@ plt.show()
 ```
 
 
-![png](FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_21_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_21_0.png)
 
 
 
@@ -3205,7 +3205,7 @@ plt.show()
 ```
 
 
-![png](FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_49_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_49_0.png)
 
 
 let's repeat it with other features (the team and the opponent)
