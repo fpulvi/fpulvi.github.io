@@ -5,8 +5,6 @@ date:   2017-03-07 13:51:05 +0100
 categories: use-case
 ---
 
-This is the second part of the Fantasy Football project. This is a preliminary version with very promising results.
-In the next hours I will enrich it with comments and explanation.
 
 
 ```python
@@ -20,9 +18,12 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 ```
 
+In this second part of the analysis, we will apply some machine learning techniques to predict if the performance of the players will be over the mark of 6.
+
 
 ```python
 marks_final.rename(columns = {'LastMark':'lastMark'})
+marks_final.head()
 ```
 
 
@@ -47,7 +48,7 @@ marks_final.rename(columns = {'LastMark':'lastMark'})
       <th>rankOpponentTeam</th>
       <th>avgPrevious5</th>
       <th>avgSoFar</th>
-      <th>lastMark</th>
+      <th>LastMark</th>
       <th>isSuff</th>
     </tr>
   </thead>
@@ -147,1076 +148,13 @@ marks_final.rename(columns = {'LastMark':'lastMark'})
       <td>6.5</td>
       <td>0</td>
     </tr>
-    <tr>
-      <th>5</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>6</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>15</td>
-      <td>0</td>
-      <td>Sampdoria</td>
-      <td>4</td>
-      <td>6.400000</td>
-      <td>6.400000</td>
-      <td>5.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>7</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>16</td>
-      <td>1</td>
-      <td>Parma</td>
-      <td>19</td>
-      <td>6.300000</td>
-      <td>6.416667</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>8</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>13</td>
-      <td>0</td>
-      <td>Udinese</td>
-      <td>5</td>
-      <td>6.000000</td>
-      <td>6.357143</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>9</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>8.0</td>
-      <td>15</td>
-      <td>1</td>
-      <td>Napoli</td>
-      <td>7</td>
-      <td>6.000000</td>
-      <td>6.312500</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>10</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>16</td>
-      <td>0</td>
-      <td>Torino</td>
-      <td>12</td>
-      <td>6.300000</td>
-      <td>6.500000</td>
-      <td>8.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>11</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>15</td>
-      <td>0</td>
-      <td>Sassuolo</td>
-      <td>14</td>
-      <td>6.600000</td>
-      <td>6.500000</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>12</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>16</td>
-      <td>1</td>
-      <td>Roma</td>
-      <td>2</td>
-      <td>6.700000</td>
-      <td>6.545455</td>
-      <td>7.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>13</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.5</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Empoli</td>
-      <td>14</td>
-      <td>6.700000</td>
-      <td>6.500000</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>14</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>16</td>
-      <td>1</td>
-      <td>Cesena</td>
-      <td>19</td>
-      <td>7.000000</td>
-      <td>6.576923</td>
-      <td>7.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>15</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>14</td>
-      <td>0</td>
-      <td>Lazio</td>
-      <td>6</td>
-      <td>6.600000</td>
-      <td>6.535714</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>16</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>15</td>
-      <td>1</td>
-      <td>Palermo</td>
-      <td>9</td>
-      <td>6.600000</td>
-      <td>6.533333</td>
-      <td>6.5</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>17</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Genoa</td>
-      <td>6</td>
-      <td>6.300000</td>
-      <td>6.468750</td>
-      <td>5.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>18</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>17</td>
-      <td>1</td>
-      <td>Chievo</td>
-      <td>16</td>
-      <td>6.400000</td>
-      <td>6.470588</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>19</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Milan</td>
-      <td>8</td>
-      <td>6.300000</td>
-      <td>6.500000</td>
-      <td>7.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>20</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>15</td>
-      <td>0</td>
-      <td>Verona</td>
-      <td>14</td>
-      <td>6.300000</td>
-      <td>6.473684</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>20</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>21</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>15</td>
-      <td>1</td>
-      <td>Cagliari</td>
-      <td>16</td>
-      <td>6.300000</td>
-      <td>6.475000</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>21</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>22</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>15</td>
-      <td>0</td>
-      <td>Fiorentina</td>
-      <td>6</td>
-      <td>6.500000</td>
-      <td>6.476190</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>22</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>23</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>15</td>
-      <td>1</td>
-      <td>Inter</td>
-      <td>11</td>
-      <td>6.400000</td>
-      <td>6.454545</td>
-      <td>6.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>23</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>24</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Juventus</td>
-      <td>1</td>
-      <td>6.100000</td>
-      <td>6.413043</td>
-      <td>5.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>24</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>25</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>17</td>
-      <td>1</td>
-      <td>Sampdoria</td>
-      <td>6</td>
-      <td>6.300000</td>
-      <td>6.437500</td>
-      <td>7.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>25</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>26</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Parma</td>
-      <td>20</td>
-      <td>6.000000</td>
-      <td>6.380000</td>
-      <td>5.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>26</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>27</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>17</td>
-      <td>1</td>
-      <td>Udinese</td>
-      <td>12</td>
-      <td>6.100000</td>
-      <td>6.403846</td>
-      <td>7.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>27</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>28</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Napoli</td>
-      <td>4</td>
-      <td>6.100000</td>
-      <td>6.388889</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>28</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>29</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>17</td>
-      <td>1</td>
-      <td>Torino</td>
-      <td>8</td>
-      <td>6.300000</td>
-      <td>6.392857</td>
-      <td>6.5</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>29</th>
-      <td>2247</td>
-      <td>Sportiello</td>
-      <td>Atalanta</td>
-      <td>30</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>17</td>
-      <td>1</td>
-      <td>Sassuolo</td>
-      <td>11</td>
-      <td>6.000000</td>
-      <td>6.362069</td>
-      <td>5.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>9874</th>
-      <td>2794</td>
-      <td>Gnoukouri</td>
-      <td>Inter</td>
-      <td>31</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Milan</td>
-      <td>9</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9875</th>
-      <td>2794</td>
-      <td>Gnoukouri</td>
-      <td>Inter</td>
-      <td>32</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Roma</td>
-      <td>2</td>
-      <td>6.500000</td>
-      <td>6.500000</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9876</th>
-      <td>2797</td>
-      <td>Dal Monte</td>
-      <td>Cesena</td>
-      <td>32</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>18</td>
-      <td>0</td>
-      <td>Genoa</td>
-      <td>7</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9877</th>
-      <td>2797</td>
-      <td>Dal Monte</td>
-      <td>Cesena</td>
-      <td>34</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>18</td>
-      <td>0</td>
-      <td>Fiorentina</td>
-      <td>7</td>
-      <td>5.500000</td>
-      <td>5.500000</td>
-      <td>NaN</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9878</th>
-      <td>2797</td>
-      <td>Dal Monte</td>
-      <td>Cesena</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>19</td>
-      <td>1</td>
-      <td>Cagliari</td>
-      <td>18</td>
-      <td>5.500000</td>
-      <td>5.500000</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9879</th>
-      <td>2798</td>
-      <td>Ujkani</td>
-      <td>Palermo</td>
-      <td>32</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>11</td>
-      <td>0</td>
-      <td>Parma</td>
-      <td>20</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9880</th>
-      <td>2798</td>
-      <td>Ujkani</td>
-      <td>Palermo</td>
-      <td>34</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>11</td>
-      <td>0</td>
-      <td>Sassuolo</td>
-      <td>16</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9881</th>
-      <td>2798</td>
-      <td>Ujkani</td>
-      <td>Palermo</td>
-      <td>35</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Atalanta</td>
-      <td>17</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>6.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9882</th>
-      <td>2799</td>
-      <td>Barella</td>
-      <td>Cagliari</td>
-      <td>34</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>18</td>
-      <td>1</td>
-      <td>Parma</td>
-      <td>20</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9883</th>
-      <td>2799</td>
-      <td>Barella</td>
-      <td>Cagliari</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>18</td>
-      <td>0</td>
-      <td>Cesena</td>
-      <td>19</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9884</th>
-      <td>2799</td>
-      <td>Barella</td>
-      <td>Cagliari</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>7.0</td>
-      <td>18</td>
-      <td>1</td>
-      <td>Udinese</td>
-      <td>16</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9885</th>
-      <td>2802</td>
-      <td>Fontanesi</td>
-      <td>Sassuolo</td>
-      <td>34</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>16</td>
-      <td>1</td>
-      <td>Palermo</td>
-      <td>11</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9886</th>
-      <td>2802</td>
-      <td>Fontanesi</td>
-      <td>Sassuolo</td>
-      <td>36</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>16</td>
-      <td>1</td>
-      <td>Milan</td>
-      <td>10</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9887</th>
-      <td>2802</td>
-      <td>Fontanesi</td>
-      <td>Sassuolo</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>13</td>
-      <td>0</td>
-      <td>Udinese</td>
-      <td>15</td>
-      <td>6.250000</td>
-      <td>6.250000</td>
-      <td>6.5</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9888</th>
-      <td>2803</td>
-      <td>Avramov</td>
-      <td>Atalanta</td>
-      <td>35</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Palermo</td>
-      <td>10</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9889</th>
-      <td>2804</td>
-      <td>Frezzolini</td>
-      <td>Atalanta</td>
-      <td>35</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Palermo</td>
-      <td>10</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9890</th>
-      <td>2795</td>
-      <td>Vitale</td>
-      <td>Juventus</td>
-      <td>35</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>Cagliari</td>
-      <td>18</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9891</th>
-      <td>2746</td>
-      <td>Djordjevic L.</td>
-      <td>Sampdoria</td>
-      <td>35</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>6</td>
-      <td>0</td>
-      <td>Udinese</td>
-      <td>13</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9892</th>
-      <td>2746</td>
-      <td>Djordjevic L.</td>
-      <td>Sampdoria</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.0</td>
-      <td>7</td>
-      <td>0</td>
-      <td>Empoli</td>
-      <td>15</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>NaN</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9893</th>
-      <td>2807</td>
-      <td>Rosseti</td>
-      <td>Atalanta</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>17</td>
-      <td>0</td>
-      <td>Chievo</td>
-      <td>14</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9894</th>
-      <td>2808</td>
-      <td>Mastalli</td>
-      <td>Milan</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>10</td>
-      <td>1</td>
-      <td>Torino</td>
-      <td>9</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9895</th>
-      <td>2810</td>
-      <td>Rosso</td>
-      <td>Torino</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>9</td>
-      <td>0</td>
-      <td>Milan</td>
-      <td>10</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9896</th>
-      <td>2810</td>
-      <td>Rosso</td>
-      <td>Torino</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>9</td>
-      <td>1</td>
-      <td>Cesena</td>
-      <td>20</td>
-      <td>6.000000</td>
-      <td>6.000000</td>
-      <td>6.0</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9897</th>
-      <td>2811</td>
-      <td>Scuffet</td>
-      <td>Udinese</td>
-      <td>37</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.5</td>
-      <td>15</td>
-      <td>1</td>
-      <td>Sassuolo</td>
-      <td>13</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9898</th>
-      <td>2811</td>
-      <td>Scuffet</td>
-      <td>Udinese</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>16</td>
-      <td>0</td>
-      <td>Cagliari</td>
-      <td>18</td>
-      <td>6.500000</td>
-      <td>6.500000</td>
-      <td>6.5</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9899</th>
-      <td>2812</td>
-      <td>Bressan</td>
-      <td>Cesena</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>20</td>
-      <td>0</td>
-      <td>Torino</td>
-      <td>9</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9900</th>
-      <td>2817</td>
-      <td>Balzaretti</td>
-      <td>Roma</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>2</td>
-      <td>1</td>
-      <td>Palermo</td>
-      <td>11</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9901</th>
-      <td>2818</td>
-      <td>Spolli</td>
-      <td>Roma</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>5.5</td>
-      <td>2</td>
-      <td>1</td>
-      <td>Palermo</td>
-      <td>11</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>9902</th>
-      <td>2819</td>
-      <td>Ichazo</td>
-      <td>Torino</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>9</td>
-      <td>1</td>
-      <td>Cesena</td>
-      <td>20</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>9903</th>
-      <td>2820</td>
-      <td>Pontisso</td>
-      <td>Udinese</td>
-      <td>38</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6.0</td>
-      <td>16</td>
-      <td>0</td>
-      <td>Cagliari</td>
-      <td>18</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>1</td>
-    </tr>
   </tbody>
 </table>
-<p>9904 rows × 16 columns</p>
 </div>
 
 
+
+As a filling value for the statistics, let us put 5 at the moment. Not too bad but not good. Let's say that in the doubt we are peximistic
 
 
 ```python
@@ -2126,16 +1064,9 @@ corr = marks_final[marks_final.columns[:16].difference(['player','name','team','
 
 
 ```python
-sns.heatmap(corr, annot = True)
+_ = sns.heatmap(corr, annot = True)
 
 ```
-
-
-
-
-    <matplotlib.axes._subplots.AxesSubplot at 0x1d02af98>
-
-
 
 
 ```python
@@ -2143,7 +1074,7 @@ plt.show()
 ```
 
 
-![png](FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_20_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_22_0.png)
 
 
 
@@ -2154,13 +1085,16 @@ plt.show()
 ```
 
 
-![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_21_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_23_0.png)
 
 
 
 ```python
 from scipy.stats import pointbiserialr
 ```
+
+We have used spearman and pearson. We have seen that the only features strongly correlated are the averages, as predictable.
+let's use biserial correlation for binary features
 
 
 ```python
@@ -2311,7 +1245,7 @@ There is an interesting difference between 2nd and 3rd teams in the final rankin
 
 This info could be precious: a well organized team will probably delivers pretty high marks even if they are not aiming to the final winning. Of course, owning a player of a top team is quite always a pro.
 
-Let's try to look at the most interesting features given this results
+To be sure, let's try to look at the most interesting features given this results
 
 
 ```python
@@ -3154,6 +2088,8 @@ rescaledX = rescaledX.join(marks_final['playingHome'])
 X = rescaledX
 ```
 
+For this first exploratory run, since the dataset is not so big, try as many algorithms as we can.
+
 
 ```python
 from sklearn.model_selection import train_test_split
@@ -3165,16 +2101,24 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, RandomForestRegressor
+from sklearn.neural_network import MLPClassifier
+from sklearn.dummy import DummyClassifier
+
+
 ```
 
 
 ```python
 models = []
-models.append(("LR",LogisticRegression()))
-models.append(("NB",GaussianNB()))
+models.append(("LRegression",LogisticRegression()))
+models.append(("NaiveBayesian",GaussianNB()))
 models.append(("KNN",KNeighborsClassifier()))
-models.append(("DT",DecisionTreeClassifier()))
+models.append(("DTree",DecisionTreeClassifier()))
+models.append(("RForest",RandomForestClassifier()))
+models.append(("NeuralNetworkMLP",MLPClassifier()))
 models.append(("SVM",SVC()))
+
 ```
 
 
@@ -3190,10 +2134,12 @@ for i in range(len(names)):
     print(names[i],results[i].mean())
 ```
 
-    ('LR', 0.63119642197511039)
-    ('NB', 0.63144846956322376)
+    ('LRegression', 0.63119642197511039)
+    ('NaiveBayesian', 0.63144846956322376)
     ('KNN', 0.63510785662425007)
-    ('DT', 0.6253910479320316)
+    ('DTree', 0.62526462608429823)
+    ('RForest', 0.6348580381367267)
+    ('NeuralNetworkMLP', 0.63043980154635904)
     ('SVM', 0.63094373750111454)
     
 
@@ -3205,8 +2151,10 @@ plt.show()
 ```
 
 
-![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_49_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_53_0.png)
 
+
+ ( Credits to Arun Prakash (Kaggle) for the very funny visualization )
 
 let's repeat it with other features (the team and the opponent)
 
@@ -3394,10 +2342,12 @@ for i in range(len(names)):
     print(names[i],results[i].mean())
 ```
 
-    ('LR', 0.64243204427630651)
-    ('NB', 0.57566490886163002)
+    ('LRegression', 0.64243204427630651)
+    ('NaiveBayesian', 0.57566490886163002)
     ('KNN', 0.68257114015310738)
-    ('DT', 0.64420179092310237)
+    ('DTree', 0.64571662399531249)
+    ('RForest', 0.66262689951214537)
+    ('NeuralNetworkMLP', 0.68913186085317235)
     ('SVM', 0.63182630211318735)
     
 
@@ -3409,8 +2359,10 @@ plt.show()
 ```
 
 
-![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_54_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_59_0.png)
 
+
+Knn and Neural Networks seems to be the most promising techniques. We have just tried them with their default configurations.
 
 
 ```python
@@ -3461,12 +2413,57 @@ plt.show()
 ```
 
 
-![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_60_0.png)
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_66_0.png)
 
+
+
+```python
+MLP = MLPClassifier()
+MLP.fit(X_train,Y_train)
+predictions = MLP.predict(X_test)
+```
+
+
+```python
+print(accuracy_score(Y_test,predictions))
+```
+
+    0.668854114084
+    
+
+
+```python
+print(classification_report(Y_test,predictions))
+```
+
+                 precision    recall  f1-score   support
+    
+              0       0.64      0.45      0.53       811
+              1       0.68      0.82      0.75      1170
+    
+    avg / total       0.66      0.67      0.66      1981
+    
+    
+
+
+```python
+conf = confusion_matrix(Y_test,predictions)
+```
+
+
+```python
+label = ["0","1"]
+sns.heatmap(conf, annot=True, xticklabels=label, yticklabels=label)
+plt.show()
+```
+
+
+![png](/FantasyFootball-FeatureEngineering2_files/FantasyFootball-FeatureEngineering2_71_0.png)
+
+
+Not bad! .. To be continued
 
 
 ```python
 
 ```
-
-
