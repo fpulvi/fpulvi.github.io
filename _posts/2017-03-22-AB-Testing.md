@@ -7,8 +7,8 @@ categories: use-case
 
 
 
-Let's assume a situation in which we have a a fitness application. Each new feature should be carefully developed and tested.
-Image a situation in which we are testing the impact on the loading time of a new feature and we have just 24h to test it. 
+Assume a situation in which we are developing and managing our fitness mobile application. Each new feature should be carefully developed and tested.
+Let's image we want to test the impact on the loading time of a new feature and we have just 24h to test it. 
 
 Before the start of the hypothesis testing, we should generate our dummy data.
 
