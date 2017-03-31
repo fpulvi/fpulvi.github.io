@@ -11,5 +11,5 @@ The aim was to develop a model able to predict which customer is going to ask fo
 
 Since, I have to anonymize it, I cannot publish the related iPython notebook and had to delete all the Business Intelligence answers: [download][1]
 
-[1]:https://github.com/fpulvi/fpulvi.github.io/blob/master/_assets/Pulvirenti_banking_Anonymized.pdf
-[get the PDF]({{ site.url }}/_assets/Pulvirenti_banking_Anonymized.pdf)
+[1]:https://github.com/fpulvi/fpulvi.github.io/blob/master/_downloads/Pulvirenti_banking_Anonymized.pdf
+[get the PDF]({{ site.url }}/_downloads/Pulvirenti_banking_Anonymized.pdf)
