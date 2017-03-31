@@ -8,7 +8,7 @@ categories: use-case
 
 
 
-In this second part of the analysis, we will apply some machine learning techniques to predict if the performance of the players will be over the mark of 6.
+In this second part of the analysis, we will apply some machine learning techniques to predict the performances of the football players.
 
 
 ```python
